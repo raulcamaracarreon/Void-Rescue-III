@@ -26,10 +26,14 @@ export interface LandscapeLayer {
 export type ForegroundKind = 'trees' | 'fence' | 'grille';
 
 /** Common configuration for both editable decorative depth planes. */
+export type DecorColorMode = 'manual' | 'gradient';
 export interface DecorLayerConfig {
   enabled: boolean;
   kind: ForegroundKind;
+  /** Manual swatch, preserved even when the automatic gradient is selected. */
   color: string;
+  colorMode: DecorColorMode;
+  invertGradient: boolean;
   opacity: number;
   parallax: number;
 }
@@ -37,10 +41,12 @@ export interface DecorLayerConfig {
 export type ForegroundConfig = DecorLayerConfig;
 
 export const DEFAULT_FOREGROUND: Readonly<DecorLayerConfig> = Object.freeze({
-  enabled: false, kind: 'trees', color: '#172b29', opacity: 0.48, parallax: 1.12,
+  enabled: false, kind: 'trees', color: '#172b29', colorMode: 'manual', invertGradient: false,
+  opacity: 0.48, parallax: 1.12,
 });
 export const DEFAULT_MIDGROUND: Readonly<DecorLayerConfig> = Object.freeze({
-  enabled: false, kind: 'trees', color: '#304b42', opacity: 0.62, parallax: 0.75,
+  enabled: false, kind: 'trees', color: '#304b42', colorMode: 'manual', invertGradient: false,
+  opacity: 0.62, parallax: 0.75,
 });
 
 export interface LandscapeStyle {
@@ -148,6 +154,19 @@ export function mixLandscapeColors(sky: string, front: string, t: number): strin
     return Math.round(a * (1 - amount) + b * amount).toString(16).padStart(2, '0');
   });
   return '#' + components.join('');
+}
+
+/** Resolve a decorative plane against the same two-color palette used by automatic landscapes.
+ * This does not mutate the stored manual color, so switching back always restores it.
+ * The reversed option samples the opposite end of that same gradient (t -> 1-t).
+ */
+export function decorColorForStyle(style: LandscapeStyle, plane: 'foreground' | 'midground'): string {
+  const decor = style[plane] ?? (plane === 'foreground' ? DEFAULT_FOREGROUND : DEFAULT_MIDGROUND);
+  if (decor.colorMode !== 'gradient') return decor.color;
+  const start = style.automatic?.skyColor ?? style.skyTop;
+  const end = style.automatic?.frontColor ?? style.layers.at(-1)?.color ?? style.skyBottom;
+  const depthPosition = plane === 'foreground' ? 0.95 : 0.75;
+  return mixLandscapeColors(start, end, decor.invertGradient ? 1 - depthPosition : depthPosition);
 }
 
 const AUTO_PRESETS: Record<LandscapePreset, AutomaticLandscape> = {
@@ -306,6 +325,9 @@ function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
     enabled: typeof v.enabled === 'boolean' ? v.enabled : fallback.enabled,
     kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille' ? v.kind : fallback.kind,
     color: color(v.color, fallback.color),
+    // Existing saved environments have no colorMode: keep their original manual colors.
+    colorMode: v.colorMode === 'gradient' ? 'gradient' : 'manual',
+    invertGradient: typeof v.invertGradient === 'boolean' ? v.invertGradient : false,
     opacity: bounded(v.opacity, 0.1, 0.85, fallback.opacity),
     parallax: bounded(v.parallax, minParallax, maxParallax, fallback.parallax),
   };
