@@ -115,3 +115,25 @@
   .landscape-rotation-columns { grid-template-columns: 1fr; }
   .landscape-library .landscape-label { grid-template-columns: 1fr; }
 }
+
+/* Optional visual foreground layer: independent from terrain and collision systems. */
+.landscape-foreground {
+  margin: 1.2em 0; padding: .85em 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.landscape-foreground h3 {
+  font: 700 .95em var(--mono); color: #d8f2e8; letter-spacing: .05em; margin: .25em 0;
+}
+.landscape-foreground-controls {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6em;
+}
+.landscape-foreground-controls label {
+  display: flex; flex-direction: column; gap: .3em;
+  min-width: 0; font: .79em var(--mono); color: #b8d8cc;
+}
+.landscape-foreground-controls input,
+.landscape-foreground-controls select { width: 100%; min-width: 0; }
+.landscape-foreground-controls input[type=checkbox] { width: 1.3em; height: 1.3em; accent-color: #83dec1; }
+@media (max-width: 760px) {
+  .landscape-foreground-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
