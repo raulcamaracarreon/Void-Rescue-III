@@ -7,9 +7,18 @@ import type { ForegroundConfig, ForegroundKind } from '../landscape/LandscapeCon
 export const MIDGROUND_DEPTH = -18;
 export const FOREGROUND_DEPTH = 19;
 
-function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number): BufferGeometry {
+/** A partial strip occupies only the initial segment of each wrapped world repeat.
+ * Individual shapes retain their physical width; the remaining segment stays empty.
+ */
+export function decorSpanWidth(spanPercent: number): number {
+  return CONFIG.worldWidth * Math.max(5, Math.min(100, spanPercent)) / 100;
+}
+
+function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number,
+  spanPercent: number): BufferGeometry {
   const vertices: number[] = [];
   const indices: number[] = [];
+  const spanWidth = decorSpanWidth(spanPercent);
   const rect = (x: number, y: number, w: number, h: number): void => {
     const i = vertices.length / 3;
     vertices.push(x, y, depth, x + w, y, depth, x + w, y + h, depth, x, y + h, depth);
@@ -22,8 +31,9 @@ function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number): Buf
   };
   if (kind === 'trees') {
     const random = new Random(seed >>> 0);
-    const count = 32;
-    const step = CONFIG.worldWidth / count;
+    // Keep the original average spacing instead of stretching trees to fit the strip.
+    const count = Math.max(1, Math.floor(spanWidth / 75));
+    const step = spanWidth / count;
     for (let i = 0; i < count; i++) {
       const x = step * (i + 0.5) + random.range(-10, 10);
       const tall = random.range(14, 29);
@@ -32,16 +42,36 @@ function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number): Buf
       triangle(x, base + tall * 0.28, tall * 0.32, tall * 0.55);
       triangle(x, base + tall * 0.50, tall * 0.25, tall * 0.50);
     }
+  } else if (kind === 'buildings') {
+    const random = new Random(seed >>> 0);
+    let x = 3;
+    while (x < spanWidth - 8) {
+      const width = Math.min(random.range(13, 31), spanWidth - x);
+      if (width < 8) break;
+      const height = random.range(13, 36);
+      rect(x, 5, width, height);
+      // A few rooftop structures lend variety without turning buildings into colliders.
+      if (random.next() > 0.4) {
+        const rooftopWidth = Math.min(width * random.range(0.25, 0.6), spanWidth - x - 2);
+        rect(x + 2, height + 5, rooftopWidth, random.range(1.5, 4.5));
+      }
+      if (random.next() > 0.78) {
+        const mastX = Math.min(x + width * 0.7, spanWidth - 1);
+        rect(mastX, height + 5, 0.6, random.range(4, 11));
+      }
+      x += width + random.range(4, 10);
+    }
   } else {
-    const count = kind === 'grille' ? 80 : 64;
-    const step = CONFIG.worldWidth / count;
+    const step = CONFIG.worldWidth / (kind === 'grille' ? 80 : 64);
+    const postWidth = kind === 'grille' ? 1.15 : 1.7;
+    const count = Math.floor((spanWidth - postWidth) / step) + 1;
     for (let i = 0; i < count; i++) {
       const x = i * step;
-      rect(x, 5, kind === 'grille' ? 1.15 : 1.7, kind === 'grille' ? 27 : 15);
+      rect(x, 5, postWidth, kind === 'grille' ? 27 : 15);
       if (kind === 'fence' && i % 4 === 0) triangle(x + 0.85, 20, 1.1, 2);
     }
-    rect(0, kind === 'grille' ? 9 : 10, CONFIG.worldWidth, kind === 'grille' ? 1.2 : 0.9);
-    rect(0, kind === 'grille' ? 27 : 17, CONFIG.worldWidth, kind === 'grille' ? 1.2 : 0.9);
+    rect(0, kind === 'grille' ? 9 : 10, spanWidth, kind === 'grille' ? 1.2 : 0.9);
+    rect(0, kind === 'grille' ? 27 : 17, spanWidth, kind === 'grille' ? 1.2 : 0.9);
   }
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
@@ -64,7 +94,7 @@ export class ForegroundDecor {
     this.dispose();
     if (!config.enabled) return;
     const seed = (gameSeed ^ styleSeed ^ this.seedOffset ^ Math.imul(wave, 0x9e3779b9)) >>> 0;
-    this.geometry = makeSilhouettes(config.kind, seed, this.depth);
+    this.geometry = makeSilhouettes(config.kind, seed, this.depth, config.spanPercent);
     this.material = new MeshBasicNodeMaterial({
       color: Number.parseInt(config.color.slice(1), 16),
       opacity: config.opacity, transparent: true, depthWrite: false, toneMapped: false,
