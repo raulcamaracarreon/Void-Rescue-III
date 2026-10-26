@@ -38,4 +38,4 @@ Una capa visual debería definir como mínimo: `id`, `name`, `enabled`, `depthOr
 
 Orden visual de controles: biblioteca → rotación de ambientes → editor de fondo → primer plano → vista previa → exportación. El editor de dibujo debe permitir alternar herramientas sin detener la simulación, pero sus modificaciones se aplicarán como cambios visuales controlados, no como mutaciones directas sobre entidades de juego.
 
-Todo lo anterior es planeación. El prototipo 0.1.0 sólo contiene el motor heredado con un mejor editor de rotación y nueva identidad.
+**Incremento inicial ya codificado (pendiente de pruebas):** `src/render/ForegroundDecor.ts` construye geometría de siluetas decorativas con recursos compartidos; `WorldScene` la coloca delante del mundo jugable. `LandscapeStyle.foreground` conserva un único conjunto opcional (tipo, color, opacidad, paralaje) dentro de los paisajes guardados. Esta primera versión no incluye varias capas independientes, dibujo libre ni el formato avanzado propuesto de objetos; permanecen en el diseño objetivo.
