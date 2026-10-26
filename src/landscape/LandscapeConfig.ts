@@ -331,7 +331,7 @@ function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
     // Existing saved environments have no colorMode: keep their original manual colors.
     colorMode: v.colorMode === 'gradient' ? 'gradient' : 'manual',
     invertGradient: typeof v.invertGradient === 'boolean' ? v.invertGradient : false,
-    opacity: bounded(v.opacity, 0.1, 0.85, fallback.opacity),
+    opacity: bounded(v.opacity, 0.1, 1, fallback.opacity),
     parallax: bounded(v.parallax, minParallax, maxParallax, fallback.parallax),
     spanPercent: Math.round(bounded(v.spanPercent, 5, 100, fallback.spanPercent)),
   };
