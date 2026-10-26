@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { Mesh } from 'three/webgpu';
+import { Group, Mesh } from 'three/webgpu';
 import {
   blankDecorBitmap, copyLandscape, DECOR_BITMAP_HEIGHT, DECOR_BITMAP_WIDTH,
+  DECOR_BITMAP_WIDTHS,
   DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences,
   sanitizeDecorBitmap, sanitizeLandscapePreferences,
 } from '../../src/landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels } from '../../src/landscape/DecorDrawing';
-import { FOREGROUND_DEPTH, MIDGROUND_DEPTH, ForegroundDecor } from '../../src/render/ForegroundDecor';
+import { decorInkCount, drawDecorPixels, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
+import { FOREGROUND_DEPTH, MIDGROUND_DEPTH, ForegroundDecor, drawingMotifWidth,
+  decorSpanWidth } from '../../src/render/ForegroundDecor';
 
 describe('fase 3 — siluetas de mapa de bits', () => {
   it('representa máscaras pequeñas y validadas, sin almacenar código ni HTML', () => {
@@ -19,6 +21,16 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(decorInkCount(sanitizeDecorBitmap(bad))).toBe(0);
     expect(sanitizeDecorBitmap({ ...empty, width: 1000 })).toEqual(empty);
     expect(sanitizeDecorBitmap({ ...empty, rows: ['1'] })).toEqual(empty);
+    expect(empty.width).toBe(288);
+    expect(empty.height).toBe(96);
+    for (const width of DECOR_BITMAP_WIDTHS) {
+      const mask = blankDecorBitmap(width);
+      expect(sanitizeDecorBitmap(mask)).toEqual(mask);
+      expect(mask.height).toBe(width / 3);
+    }
+    const old = blankDecorBitmap(96);
+    old.rows[3] = '1' + '0'.repeat(95);
+    expect(sanitizeDecorBitmap(JSON.parse(JSON.stringify(old)))).toEqual(old);
   });
 
   it('dibuja con pincel, línea, rectángulo y borrador, sin cambiar el origen', () => {
@@ -65,6 +77,25 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(legacy.custom.foreground?.bitmap).toBeUndefined();
   });
 
+  it('cambia entre las cuatro resoluciones sin deformar ni destruir el mapa original', () => {
+    const legacy = blankDecorBitmap(96);
+    const painted = drawDecorPixels(legacy, 'rectangle', { x: 5, y: 6 }, { x: 30, y: 20 });
+    for (const width of DECOR_BITMAP_WIDTHS) {
+      const resized = resizeDecorBitmap(painted, width);
+      expect(resized.width).toBe(width);
+      expect(resized.height).toBe(width / 3);
+      expect(decorInkCount(resized)).toBeGreaterThan(0);
+      expect(sanitizeDecorBitmap(resized)).toEqual(resized);
+    }
+    const high = resizeDecorBitmap(painted, 384);
+    expect(high.rows[24]![20]).toBe('1');
+    expect(painted.width).toBe(96);
+    expect(painted.height).toBe(32);
+    expect(resizeDecorBitmap(painted, 123)).toEqual(painted);
+    expect(drawingMotifWidth(painted)).toBe(150);
+    expect(drawingMotifWidth(high)).toBe(150);
+  });
+
   it('proyecta el dibujo en ambos planos y deja fuera los píxeles transparentes', () => {
     const bitmap = drawDecorPixels(blankDecorBitmap(), 'rectangle',
       { x: 10, y: 10 }, { x: 20, y: 20 });
@@ -75,13 +106,41 @@ describe('fase 3 — siluetas de mapa de bits', () => {
       render.rebuild({ ...defaults, kind: 'drawing', enabled: true,
         bitmap, opacity: 1, spanPercent: 25 }, 8042, 7, 1);
       expect(render.group.children).toHaveLength(3);
-      const geometry = (render.group.children[1] as Mesh).geometry;
-      const attr = geometry.getAttribute('position');
+      // 25% of a 2400-unit world = 600, precisely four 150-unit motifs.
+      const copy = render.group.children[1] as Group;
+      expect(copy.children).toHaveLength(4);
+      expect(copy.children.map(child => child.position.x)).toEqual([0, 150, 300, 450]);
+      const tiled = copy.children as Mesh[];
+      expect(tiled[0]!.geometry).toBe(tiled[1]!.geometry); // shared asset
+      const attr = tiled[0]!.geometry.getAttribute('position');
       expect(attr.count).toBeGreaterThan(0);
       expect(attr.getZ(0)).toBe(depth);
       expect(Math.max(...Array.from({ length: attr.count }, (_, i) => attr.getX(i))))
-        .toBeLessThan(601);
+        .toBeLessThanOrEqual(drawingMotifWidth(bitmap));
+      expect(decorSpanWidth(25)).toBe(600);
       render.dispose();
     }
+  });
+  it('recorta solo la última repetición sin comprimir el ancho del motivo', () => {
+    const bitmap = drawDecorPixels(blankDecorBitmap(288), 'line',
+      { x: 0, y: 6 }, { x: 287, y: 6 });
+    const render = new ForegroundDecor();
+    render.rebuild({ ...DEFAULT_FOREGROUND, kind: 'drawing', enabled: true,
+      bitmap, spanPercent: 23 }, 8042, 8, 2);
+    const group = render.group.children[1] as Group;
+    const parts = group.children as Mesh[];
+    expect(parts).toHaveLength(4);
+    expect(parts.map(child => child.position.x)).toEqual([0, 150, 300, 450]);
+    const full = parts[0]!.geometry.getAttribute('position');
+    const partial = parts[3]!.geometry.getAttribute('position');
+    expect(Math.max(...Array.from({ length: full.count }, (_, i) => full.getX(i))))
+      .toBeCloseTo(150, 6);
+    expect(Math.max(...Array.from({ length: partial.count }, (_, i) => partial.getX(i))))
+      .toBeCloseTo(102, 6);
+    expect(parts[0]!.geometry).toBe(parts[2]!.geometry);
+    expect(parts[3]!.geometry).not.toBe(parts[0]!.geometry);
+    render.update(1400);
+    expect(Number.isFinite(group.position.x)).toBe(true);
+    render.dispose();
   });
 });
