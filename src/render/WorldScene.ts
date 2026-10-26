@@ -6,9 +6,10 @@ import { Random } from '../core/Random';
 import { CONFIG, SAFE_BASE, SETTLEMENTS } from '../game/config';
 import type { MissionMode } from '../game/MissionMode';
 import { Terrain } from '../game/Terrain';
-import { defaultLandscapePreferences, resolveLandscape } from '../landscape/LandscapeConfig';
+import { DEFAULT_FOREGROUND, defaultLandscapePreferences, resolveLandscape } from '../landscape/LandscapeConfig';
 import type { LandscapePreferences } from '../landscape/LandscapeConfig';
 import { ParallaxLandscape } from './ParallaxLandscape';
+import { ForegroundDecor } from './ForegroundDecor';
 import { nearCameraX } from '../core/WorldWrap';
 import { basaltMaterial, beaconMaterial, emission, metal, skyMaterial } from './materials';
 
@@ -104,6 +105,7 @@ export class WorldScene {
   readonly backdrop = new Group();
   private readonly terrainCopies: Group[] = [];
   private readonly landscape = new ParallaxLandscape();
+  readonly foreground = new ForegroundDecor();
   private lastLandscapeKey = '';
   private readonly settlements: Group[] = [];
   private readonly stars: InstancedMesh;
@@ -158,6 +160,7 @@ export class WorldScene {
       this.settlements.push(model);
       this.group.add(model);
     }
+    this.group.add(this.foreground.group);
     this.setLandscape(preferences, 1);
   }
 
@@ -173,11 +176,13 @@ export class WorldScene {
     this.stars.visible = style.stars;
     this.moon.visible = style.moon;
     this.landscape.rebuild(style, this.seed, wave);
+    this.foreground.rebuild(style.foreground ?? { ...DEFAULT_FOREGROUND }, this.seed, style.seed, wave);
   }
 
   update(cameraX: number, viewWidth: number, missionMode: MissionMode, reducedMotion = false): void {
     this.backdrop.position.x = cameraX;
     this.landscape.update(cameraX, reducedMotion);
+    this.foreground.update(cameraX, reducedMotion);
     this.sky.scale.set(viewWidth + 5, 140, 1);
     this.moon.position.x = viewWidth * 0.24 - (reducedMotion ? 0 : Math.sin(cameraX / CONFIG.worldWidth * Math.PI * 2) * 4);
     const tileIndex = Math.floor(cameraX / CONFIG.worldWidth);
