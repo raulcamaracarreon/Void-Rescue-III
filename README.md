@@ -8,7 +8,11 @@
 
 Desarrollo en [`feat/decor-auto-gradient`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/decor-auto-gradient), **pendiente de compilación y pruebas locales**. Ambos planos decorativos ofrecen color manual o color derivado del gradiente automático de dos extremos, con inversión independiente por plano. El color manual se conserva al alternar; la franja de vista previa incluye los planos habilitados y se actualiza al modificar la paleta. No se altera la simulación ni el gradiente de las montañas/edificios de fondo.
 
-**Orden de trabajo:** validar fase 0; terminar pendientes de fase 2 (**edificios** y **longitud lateral**); iniciar fase 3 (editor de siluetas y dibujo manual). No ampliar alcance fuera de esta secuencia.
+**Orden de trabajo:** validar conjuntamente fase 0 y cierre de fase 2 en la rama `feat/decor-buildings-and-span`; después iniciar fase 3 (editor de siluetas y dibujo manual). Edificios y longitud lateral están implementados en esa rama, pero aún no se han compilado ni probado en la máquina del usuario. No ampliar alcance fuera de esta secuencia.
+
+## Fase 2 — edificios y longitud lateral de ambos planos
+
+En [`feat/decor-buildings-and-span`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/decor-buildings-and-span) se añadió el motivo **Edificios**, disponible en primer y tercer plano, y un campo **Longitud lateral (%)** independiente para ambos (5–100 %). La longitud define qué porcentaje del ancho circular (2400 unidades de juego) estará cubierto por la franja decorativa. Los elementos no se estiran, la zona restante queda vacía y el patrón se repite por mundo. No modifica la geometría colisionable ni el núcleo de simulación. Falta validación local de esta nueva rama.
 
 ## Qué funciona como base
 
