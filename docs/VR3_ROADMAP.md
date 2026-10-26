@@ -13,6 +13,23 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 5. Se podrá editar el contenido visual sin programar: figuras geométricas, trazos, polígonos y siluetas, selección, copia, reordenamiento, color, opacidad, posición, escala y control de paralaje.
 6. Reservar JSON versionado para diseños exportables y portables; mantener datos de VR3 separados de las claves locales de VR2.
 
+## Fase 0 prioritaria — gradiente para los dos planos decorativos
+
+**Decisión nueva (25/10/2026):** antes de ampliar los motivos o desarrollar herramientas de dibujo, los planos de primer y tercer plano deben poder derivar su color de la paleta automática de dos colores, y cada uno debe poder **invertir** ese gradiente para comprobar contrastes.
+
+- [x] Implementado en rama `feat/decor-auto-gradient`: opción de color **manual** o **gradiente automático** para cada plano.
+- [x] Implementado: inversión independiente del gradiente por plano (`invertGradient`), sin invertir el cielo ni las montañas.
+- [x] Implementado: vista previa cromática al cambiar entre modos, conservando el color manual.
+- [x] Implementado: persistencia y saneamiento sin sobrescribir la configuración anterior; archivos antiguos mantienen modo manual.
+- [x] Añadidas pruebas unitarias y E2E para inversión, independencia y recarga.
+- [ ] Ejecutar `npm run build`, `npm run test` y Playwright en la computadora del usuario; confirmar visualmente normal/inverso.
+- [ ] Revisar efecto al cambiar los dos colores originales, restauración de color manual y configuración guardada.
+- [ ] Fusionar solamente cuando todo esté validado; **no usar GitHub Actions** por defecto.
+
+**Regla cromática inicial:** se toman colores de la misma interpolación RGB de `AutomaticLandscape.skyColor` → `frontColor`. El tercer plano toma una muestra al 75 % y el primero al 95 %. El modo inverso usa la posición complementaria (25 % y 5 %, respectivamente), permitiendo probar contrastes entre capas. No se agrega un control avanzado de intensidad en esta fase.
+
+**Después de esta fase 0:** volver a cerrar los pendientes de la fase 2: (1) motivo **edificios**, (2) longitud lateral configurable del motivo en ambos planos. Solo entonces iniciar la fase 3 de dibujo manual tipo Paint simplificado.
+
 ## Fases e hitos de aceptación
 
 ### 0. Arranque independiente (completado y validado para el editor de rotación)
