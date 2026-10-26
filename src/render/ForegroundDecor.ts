@@ -73,8 +73,9 @@ export class ForegroundDecor {
     for (let i = 0; i < 3; i++) {
       const mesh = new Mesh(this.geometry, this.material);
       mesh.frustumCulled = false;
-      // Both planes are translucent; order their blending from middle to front.
-      mesh.renderOrder = this.depth > 0 ? 2 : 1;
+      // Transparency order: middle behind visual effects, front over visual effects.
+      // Opaque vehicles still draw first and occlude the middle through depth testing.
+      mesh.renderOrder = this.depth > 0 ? 1 : -1;
       this.copies.push(mesh);
       this.group.add(mesh);
     }
