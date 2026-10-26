@@ -10,6 +10,12 @@ Desarrollo en [`feat/decor-auto-gradient`](https://github.com/raulcamaracarreon/
 
 **Orden de trabajo:** fases 0 y 2 implementadas en sus ramas; el usuario confirmó funcionalmente edificios y longitud lateral. La fase 3 se inicia en `feat/phase3-paint-editor` sin alterar `main`. El ajuste de opacidad 100 % y el primer lienzo Paint requieren validación local. No ampliar alcance fuera de la hoja de ruta.
 
+### Revisión del gradiente — continuación por profundidad
+
+En `feat/phase3-paint-editor` se corrigió la lógica que tomaba muestras internas del gradiente (75 % y 95 %). Ahora, cuando está activado el color automático de alguno de los planos decorativos, la paleta de los **dos colores seleccionados** se recalcula en `N + 2` pasos: `N` para las montañas/edificios y **dos tonos adicionales** para los planos. El tercer plano es más oscuro que el fondo cercano y el primer plano más oscuro que el tercero; cada inversión independiente genera tonos más claros sin repetir exactamente la penúltima capa de fondo. La interpolación se mantiene limitada a los extremos de color seleccionados. Al desactivar el color automático de ambos planos, los paisajes recuperan la paleta anterior (`N` pasos), y los colores manuales no se modifican.
+
+Se añadieron pruebas unitarias de continuidad de color y de inversión, y aserciones visuales de los swatches en Playwright. **Pendiente de ejecutar build y pruebas locales; no está fusionado con `main`.**
+
 ## Fase 2 — edificios y longitud lateral de ambos planos
 
 En [`feat/decor-buildings-and-span`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/decor-buildings-and-span) se añadió el motivo **Edificios**, disponible en primer y tercer plano, y un campo **Longitud lateral (%)** independiente para ambos (5–100 %). La longitud define qué porcentaje del ancho circular (2400 unidades de juego) estará cubierto por la franja decorativa. Los elementos no se estiran, la zona restante queda vacía y el patrón se repite por mundo. No modifica la geometría colisionable ni el núcleo de simulación. Falta validación local de esta nueva rama.
