@@ -23,7 +23,7 @@ export interface LandscapeLayer {
   detail: number;
 }
 
-export type ForegroundKind = 'trees' | 'fence' | 'grille';
+export type ForegroundKind = 'trees' | 'fence' | 'grille' | 'buildings';
 
 /** Common configuration for both editable decorative depth planes. */
 export type DecorColorMode = 'manual' | 'gradient';
@@ -36,17 +36,19 @@ export interface DecorLayerConfig {
   invertGradient: boolean;
   opacity: number;
   parallax: number;
+  /** Decorated portion of the wrapped world, in percent (5..100). Objects keep their size. */
+  spanPercent: number;
 }
 /** Kept as an alias for existing foreground callers and tests. */
 export type ForegroundConfig = DecorLayerConfig;
 
 export const DEFAULT_FOREGROUND: Readonly<DecorLayerConfig> = Object.freeze({
   enabled: false, kind: 'trees', color: '#172b29', colorMode: 'manual', invertGradient: false,
-  opacity: 0.48, parallax: 1.12,
+  opacity: 0.48, parallax: 1.12, spanPercent: 100,
 });
 export const DEFAULT_MIDGROUND: Readonly<DecorLayerConfig> = Object.freeze({
   enabled: false, kind: 'trees', color: '#304b42', colorMode: 'manual', invertGradient: false,
-  opacity: 0.62, parallax: 0.75,
+  opacity: 0.62, parallax: 0.75, spanPercent: 100,
 });
 
 export interface LandscapeStyle {
@@ -323,13 +325,15 @@ function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
       ? Math.max(min, Math.min(max, candidate)) : previous;
   return {
     enabled: typeof v.enabled === 'boolean' ? v.enabled : fallback.enabled,
-    kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille' ? v.kind : fallback.kind,
+    kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille' || v.kind === 'buildings'
+      ? v.kind : fallback.kind,
     color: color(v.color, fallback.color),
     // Existing saved environments have no colorMode: keep their original manual colors.
     colorMode: v.colorMode === 'gradient' ? 'gradient' : 'manual',
     invertGradient: typeof v.invertGradient === 'boolean' ? v.invertGradient : false,
     opacity: bounded(v.opacity, 0.1, 0.85, fallback.opacity),
     parallax: bounded(v.parallax, minParallax, maxParallax, fallback.parallax),
+    spanPercent: Math.round(bounded(v.spanPercent, 5, 100, fallback.spanPercent)),
   };
 }
 
