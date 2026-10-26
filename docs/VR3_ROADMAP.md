@@ -31,15 +31,19 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] Comprobar vista estrecha, teclado, puntero y casos de biblioteca extensa.
 - [ ] Probar recarga, selección secuencial vs aleatoria y preservación de paisajes personalizados.
 
-### 2. Motor visual por capas (primer incremento implementado en rama, pendiente de pruebas)
+### 2. Motor visual por capas (dos planos configurables, pendiente de validación local)
 
 - [x] Capa **opcional** visual de primer plano en `ForegroundDecor.ts`, con motivos de árboles, cercas y rejas.
 - [x] Geometría procedural repetible en mundo circular; desplazamiento configurable por paralaje; recursos compartidos para tres copias contiguas.
 - [x] Control de activación, motivo, color, opacidad y factor de paralaje desde el editor existente. Datos almacenados dentro de cada estilo personalizado; presets sin modificación.
 - [x] Conservar `Terrain`, las colisiones y la simulación sin cambios: sólo `WorldScene` vincula la capa visual.
 - [x] Añadir pruebas unitarias de serialización/saneamiento y generación determinista; E2E de persistencia y biblioteca.
-- [ ] Ejecutar build, unitarias y Playwright de ambos backends en la máquina del usuario, revisar visualmente oclusión y rendimiento.
-- [ ] Extender a varias capas independientes y otras siluetas configurables; añadir editor de dibujo en fase 3.
+- [x] Usuario confirmó pruebas de primer plano aprobadas y visualización correcta (rama `feat/foreground-layers`).
+- [x] Añadir **tercer plano** con profundidad entre el vehículo (z=0) y la montaña/edificio más próximo (z=-31); reutiliza los motivos con configuración y semilla independientes.
+- [x] Mantener primer plano en z=19, tercer plano en z=-18; mezcla transparente por orden explícito sin cambiar colisiones.
+- [x] Extender persistencia, saneamiento y pruebas para ambos planos; antiguo campo `foreground` permanece válido y `midground` se inicializa desactivado en guardados anteriores.
+- [ ] Ejecutar build, unitarias y Playwright de ambos backends en la máquina del usuario, revisar visualmente oclusión, fondo y rendimiento.
+- [ ] Editor de trazos, polígonos, siluetas y objetos individuales: fase 3. Por ahora «editable» significa controles de motivo/color/opacidad/paralaje por plano.
 - **Aceptación pendiente:** probar que activar y desactivar las rejas/árboles no altera impactos, rescates ni avance de oleada en una partida real.
 
 ### 3. Editor de elementos y exportación (pendiente)
