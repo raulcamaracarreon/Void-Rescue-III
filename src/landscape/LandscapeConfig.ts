@@ -25,33 +25,41 @@ export interface LandscapeLayer {
 
 export type ForegroundKind = 'trees' | 'fence' | 'grille' | 'buildings' | 'drawing';
 
-/** First stage of the Paint-style editor: a fixed, monochrome pixel mask.
- * A 1 is painted; a 0 is transparent. No user HTML or executable data is stored.
+/** Four bounded 3:1 mask resolutions; the default is 288×96.
+ * Legacy 96×32 v1 masks remain valid and are never resized on load.
+ * Bits store silhouette coverage only (1 painted, 0 transparent), not colors.
  */
-export const DECOR_BITMAP_WIDTH = 96;
-export const DECOR_BITMAP_HEIGHT = 32;
+export const DECOR_BITMAP_WIDTHS = [96, 192, 288, 384] as const;
+export type DecorBitmapWidth = (typeof DECOR_BITMAP_WIDTHS)[number];
+export const DECOR_BITMAP_WIDTH = 288;
+export const DECOR_BITMAP_HEIGHT = 96;
+export function isDecorBitmapWidth(value: unknown): value is DecorBitmapWidth {
+  return typeof value === 'number' && DECOR_BITMAP_WIDTHS.some(width => width === value);
+}
 export interface DecorBitmap {
   version: 1;
   width: number;
   height: number;
   rows: string[];
 }
-export function blankDecorBitmap(): DecorBitmap {
+export function blankDecorBitmap(width: number = DECOR_BITMAP_WIDTH): DecorBitmap {
+  const safeWidth = isDecorBitmapWidth(width) ? width : DECOR_BITMAP_WIDTH;
+  const height = safeWidth / 3;
   return {
-    version: 1, width: DECOR_BITMAP_WIDTH, height: DECOR_BITMAP_HEIGHT,
-    rows: Array.from({ length: DECOR_BITMAP_HEIGHT }, () => '0'.repeat(DECOR_BITMAP_WIDTH)),
+    version: 1, width: safeWidth, height,
+    rows: Array.from({ length: height }, () => '0'.repeat(safeWidth)),
   };
 }
 export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
   const fallback = blankDecorBitmap();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
   const v = value as Record<string, unknown>;
-  if (v.version !== 1 || v.width !== DECOR_BITMAP_WIDTH || v.height !== DECOR_BITMAP_HEIGHT
-    || !Array.isArray(v.rows) || v.rows.length !== DECOR_BITMAP_HEIGHT) return fallback;
+  if (v.version !== 1 || !isDecorBitmapWidth(v.width) || v.height !== v.width / 3
+    || !Array.isArray(v.rows) || v.rows.length !== v.height) return fallback;
   return {
-    ...fallback,
-    rows: v.rows.map(row => typeof row === 'string' && row.length === DECOR_BITMAP_WIDTH
-      && /^[01]+$/.test(row) ? row : '0'.repeat(DECOR_BITMAP_WIDTH)),
+    version: 1, width: v.width, height: v.height,
+    rows: v.rows.map(row => typeof row === 'string' && row.length === v.width
+      && /^[01]+$/.test(row) ? row : '0'.repeat(v.width as number)),
   };
 }
 
