@@ -23,7 +23,37 @@ export interface LandscapeLayer {
   detail: number;
 }
 
-export type ForegroundKind = 'trees' | 'fence' | 'grille' | 'buildings';
+export type ForegroundKind = 'trees' | 'fence' | 'grille' | 'buildings' | 'drawing';
+
+/** First stage of the Paint-style editor: a fixed, monochrome pixel mask.
+ * A 1 is painted; a 0 is transparent. No user HTML or executable data is stored.
+ */
+export const DECOR_BITMAP_WIDTH = 96;
+export const DECOR_BITMAP_HEIGHT = 32;
+export interface DecorBitmap {
+  version: 1;
+  width: number;
+  height: number;
+  rows: string[];
+}
+export function blankDecorBitmap(): DecorBitmap {
+  return {
+    version: 1, width: DECOR_BITMAP_WIDTH, height: DECOR_BITMAP_HEIGHT,
+    rows: Array.from({ length: DECOR_BITMAP_HEIGHT }, () => '0'.repeat(DECOR_BITMAP_WIDTH)),
+  };
+}
+export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
+  const fallback = blankDecorBitmap();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
+  const v = value as Record<string, unknown>;
+  if (v.version !== 1 || v.width !== DECOR_BITMAP_WIDTH || v.height !== DECOR_BITMAP_HEIGHT
+    || !Array.isArray(v.rows) || v.rows.length !== DECOR_BITMAP_HEIGHT) return fallback;
+  return {
+    ...fallback,
+    rows: v.rows.map(row => typeof row === 'string' && row.length === DECOR_BITMAP_WIDTH
+      && /^[01]+$/.test(row) ? row : '0'.repeat(DECOR_BITMAP_WIDTH)),
+  };
+}
 
 /** Common configuration for both editable decorative depth planes. */
 export type DecorColorMode = 'manual' | 'gradient';
@@ -38,6 +68,8 @@ export interface DecorLayerConfig {
   parallax: number;
   /** Decorated portion of the wrapped world, in percent (5..100). Objects keep their size. */
   spanPercent: number;
+  /** Raster silhouette is optional, so legacy and procedural environments stay compact. */
+  bitmap?: DecorBitmap;
 }
 /** Kept as an alias for existing foreground callers and tests. */
 export type ForegroundConfig = DecorLayerConfig;
@@ -191,8 +223,14 @@ export function copyLandscape(style: LandscapeStyle): LandscapeStyle {
   return {
     ...style,
     layers: style.layers.map(layer => ({ ...layer })),
-    ...(style.foreground ? { foreground: { ...style.foreground } } : {}),
-    ...(style.midground ? { midground: { ...style.midground } } : {}),
+    ...(style.foreground ? { foreground: {
+      ...style.foreground,
+      ...(style.foreground.bitmap ? { bitmap: sanitizeDecorBitmap(style.foreground.bitmap) } : {}),
+    } } : {}),
+    ...(style.midground ? { midground: {
+      ...style.midground,
+      ...(style.midground.bitmap ? { bitmap: sanitizeDecorBitmap(style.midground.bitmap) } : {}),
+    } } : {}),
     ...(style.automatic ? { automatic: { ...style.automatic } } : {}),
   };
 }
@@ -325,8 +363,8 @@ function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
       ? Math.max(min, Math.min(max, candidate)) : previous;
   return {
     enabled: typeof v.enabled === 'boolean' ? v.enabled : fallback.enabled,
-    kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille' || v.kind === 'buildings'
-      ? v.kind : fallback.kind,
+    kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille'
+      || v.kind === 'buildings' || v.kind === 'drawing' ? v.kind : fallback.kind,
     color: color(v.color, fallback.color),
     // Existing saved environments have no colorMode: keep their original manual colors.
     colorMode: v.colorMode === 'gradient' ? 'gradient' : 'manual',
@@ -334,6 +372,9 @@ function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
     opacity: bounded(v.opacity, 0.1, 1, fallback.opacity),
     parallax: bounded(v.parallax, minParallax, maxParallax, fallback.parallax),
     spanPercent: Math.round(bounded(v.spanPercent, 5, 100, fallback.spanPercent)),
+    ...(v.bitmap !== undefined
+      ? { bitmap: sanitizeDecorBitmap(v.bitmap) }
+      : fallback.bitmap ? { bitmap: sanitizeDecorBitmap(fallback.bitmap) } : {}),
   };
 }
 
