@@ -3,10 +3,13 @@ import { Random } from '../core/Random';
 import { CONFIG } from '../game/config';
 import type { ForegroundConfig, ForegroundKind } from '../landscape/LandscapeConfig';
 
-function makeSilhouettes(kind: ForegroundKind, seed: number): BufferGeometry {
+/** Z-axis ordering in the orthographic camera: mountains < middle < vehicle < front. */
+export const MIDGROUND_DEPTH = -18;
+export const FOREGROUND_DEPTH = 19;
+
+function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number): BufferGeometry {
   const vertices: number[] = [];
   const indices: number[] = [];
-  const depth = 19; // In front of the player (z=0), but behind the camera (z=120).
   const rect = (x: number, y: number, w: number, h: number): void => {
     const i = vertices.length / 3;
     vertices.push(x, y, depth, x + w, y, depth, x + w, y + h, depth, x, y + h, depth);
@@ -47,7 +50,7 @@ function makeSilhouettes(kind: ForegroundKind, seed: number): BufferGeometry {
   return geometry;
 }
 
-/** Decorative geometry, kept entirely outside simulation and collision systems. */
+/** Reusable decorative layer: geometry only, never a collider or simulated entity. */
 export class ForegroundDecor {
   readonly group = new Group();
   private geometry: BufferGeometry | null = null;
@@ -55,11 +58,13 @@ export class ForegroundDecor {
   private readonly copies: Mesh[] = [];
   private parallax = 1;
 
+  constructor(private readonly depth = FOREGROUND_DEPTH, private readonly seedOffset = 0) {}
+
   rebuild(config: ForegroundConfig, gameSeed: number, styleSeed: number, wave: number): void {
     this.dispose();
     if (!config.enabled) return;
-    const seed = (gameSeed ^ styleSeed ^ Math.imul(wave, 0x9e3779b9)) >>> 0;
-    this.geometry = makeSilhouettes(config.kind, seed);
+    const seed = (gameSeed ^ styleSeed ^ this.seedOffset ^ Math.imul(wave, 0x9e3779b9)) >>> 0;
+    this.geometry = makeSilhouettes(config.kind, seed, this.depth);
     this.material = new MeshBasicNodeMaterial({
       color: Number.parseInt(config.color.slice(1), 16),
       opacity: config.opacity, transparent: true, depthWrite: false, toneMapped: false,
@@ -68,6 +73,8 @@ export class ForegroundDecor {
     for (let i = 0; i < 3; i++) {
       const mesh = new Mesh(this.geometry, this.material);
       mesh.frustumCulled = false;
+      // Both planes are translucent; order their blending from middle to front.
+      mesh.renderOrder = this.depth > 0 ? 2 : 1;
       this.copies.push(mesh);
       this.group.add(mesh);
     }
