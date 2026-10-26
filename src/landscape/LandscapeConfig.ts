@@ -25,16 +25,22 @@ export interface LandscapeLayer {
 
 export type ForegroundKind = 'trees' | 'fence' | 'grille';
 
-export interface ForegroundConfig {
+/** Common configuration for both editable decorative depth planes. */
+export interface DecorLayerConfig {
   enabled: boolean;
   kind: ForegroundKind;
   color: string;
   opacity: number;
   parallax: number;
 }
+/** Kept as an alias for existing foreground callers and tests. */
+export type ForegroundConfig = DecorLayerConfig;
 
-export const DEFAULT_FOREGROUND: Readonly<ForegroundConfig> = Object.freeze({
+export const DEFAULT_FOREGROUND: Readonly<DecorLayerConfig> = Object.freeze({
   enabled: false, kind: 'trees', color: '#172b29', opacity: 0.48, parallax: 1.12,
+});
+export const DEFAULT_MIDGROUND: Readonly<DecorLayerConfig> = Object.freeze({
+  enabled: false, kind: 'trees', color: '#304b42', opacity: 0.62, parallax: 0.75,
 });
 
 export interface LandscapeStyle {
@@ -44,7 +50,8 @@ export interface LandscapeStyle {
   moon: boolean;
   seed: number;
   layers: LandscapeLayer[];
-  foreground?: ForegroundConfig;
+  foreground?: DecorLayerConfig;
+  midground?: DecorLayerConfig;
   automatic?: AutomaticLandscape;
   advancedEdited?: boolean;
 }
@@ -164,6 +171,7 @@ export function copyLandscape(style: LandscapeStyle): LandscapeStyle {
     ...style,
     layers: style.layers.map(layer => ({ ...layer })),
     ...(style.foreground ? { foreground: { ...style.foreground } } : {}),
+    ...(style.midground ? { midground: { ...style.midground } } : {}),
     ...(style.automatic ? { automatic: { ...style.automatic } } : {}),
   };
 }
@@ -197,7 +205,9 @@ export function defaultLandscapePreferences(): LandscapePreferences {
   return {
     selection: 'cycle',
     mode: 'automatic',
-    custom: { ...copyLandscape(LANDSCAPE_PRESETS.night.style), foreground: { ...DEFAULT_FOREGROUND }, automatic: copyAutomatic(AUTO_PRESETS.night), advancedEdited: false },
+    custom: { ...copyLandscape(LANDSCAPE_PRESETS.night.style),
+      foreground: { ...DEFAULT_FOREGROUND }, midground: { ...DEFAULT_MIDGROUND },
+      automatic: copyAutomatic(AUTO_PRESETS.night), advancedEdited: false },
     library: [],
     cyclePool: [...PRESET_ORDER],
     rotation: 'sequential',
@@ -285,7 +295,8 @@ function sanitizeAutomatic(value: unknown, fallback: AutomaticLandscape): Automa
   };
 }
 
-export function sanitizeForeground(value: unknown, fallback: ForegroundConfig = { ...DEFAULT_FOREGROUND }): ForegroundConfig {
+function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
+  minParallax: number, maxParallax: number): DecorLayerConfig {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...fallback };
   const v = value as Record<string, unknown>;
   const bounded = (candidate: unknown, min: number, max: number, previous: number): number =>
@@ -296,8 +307,20 @@ export function sanitizeForeground(value: unknown, fallback: ForegroundConfig = 
     kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille' ? v.kind : fallback.kind,
     color: color(v.color, fallback.color),
     opacity: bounded(v.opacity, 0.1, 0.85, fallback.opacity),
-    parallax: bounded(v.parallax, 1, 1.35, fallback.parallax),
+    parallax: bounded(v.parallax, minParallax, maxParallax, fallback.parallax),
   };
+}
+
+/** Front plane moves slightly faster than the vehicle and occludes it. */
+export function sanitizeForeground(value: unknown,
+  fallback: ForegroundConfig = { ...DEFAULT_FOREGROUND }): ForegroundConfig {
+  return sanitizeDecor(value, fallback, 1, 1.35);
+}
+
+/** Middle plane moves more slowly, between vehicles and mountainous/building backgrounds. */
+export function sanitizeMidground(value: unknown,
+  fallback: DecorLayerConfig = { ...DEFAULT_MIDGROUND }): DecorLayerConfig {
+  return sanitizeDecor(value, fallback, 0.4, 1);
 }
 
 export function sanitizeLandscapeStyle(value: unknown, fallback = defaultLandscapePreferences().custom): LandscapeStyle {
@@ -327,6 +350,7 @@ export function sanitizeLandscapeStyle(value: unknown, fallback = defaultLandsca
     seed: int(v.seed, 0, 999999999, fallback.seed),
     layers,
     foreground: sanitizeForeground(v.foreground, fallback.foreground ?? { ...DEFAULT_FOREGROUND }),
+    midground: sanitizeMidground(v.midground, fallback.midground ?? { ...DEFAULT_MIDGROUND }),
     automatic: sanitizeAutomatic(v.automatic, legacy
       ? {
           skyColor: color(v.skyTop, autoFallback.skyColor),
