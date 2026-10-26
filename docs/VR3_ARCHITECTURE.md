@@ -49,3 +49,14 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 - El patrón se repite en coordenadas del mundo circular con las tres copias del renderizador. La posición inicial de la franja (desplazamiento lateral) podrá convertirse después en objeto editable de la fase 3; **no está implementada**.
 - El valor se serializa en `LandscapeStyle.foreground` o `LandscapeStyle.midground` sin afectar a la simulación ni las colisiones. Los mundos antiguos que no tienen ese campo se recuperan con 100 %.
 - Esta edición paramétrica **no equivale** al editor manual tipo Paint, ni permite dibujar elementos individuales. Esas herramientas permanecen exclusivamente en la fase 3.
+
+
+## Fase 3 — primera entrega de dibujo raster (pendiente de validación local)
+
+- `src/landscape/LandscapeConfig.ts`: `DecorBitmap` v1 (96 × 32, filas binarias), `kind:'drawing'`, validación estricta, datos opcionales y copia profunda por plano/paisaje. No importa HTML ni scripts.
+- `src/landscape/DecorDrawing.ts`: operaciones puras para pincel, borrador, línea Bresenham y rectángulo; independientes del DOM, Three.js y simulación.
+- `src/ui/DecorPaintEditor.ts`: diálogo Paint con lienzo pixelado, puntero, vista previa, 30 estados máximos de deshacer y rehacer, aplicar y cancelar. No altera el estado del juego hasta aplicar.
+- `src/ui/LandscapePanel.ts`: botones de edición separados para primero y tercero. Al aplicar, guarda la máscara en el estilo personalizado y activa `kind:'drawing'`; los motivos procedurales se preservan como alternativas.
+- `src/render/ForegroundDecor.ts`: convierte tramos horizontales de píxeles pintados en rectángulos Three.js en z=19 / z=-18. Colorea todo mediante los parámetros del plano (manual/gradiente/inversión/opacidad 10–100 %, paralaje y longitud). El bitmap escala lateralmente al ancho de la franja en esta versión; el escalado no destructivo se desarrollará después.
+- Conserva los 2400 puntos del mundo circular; ningún píxel crea colisión. Los datos guardados anteriores no tienen `bitmap` y siguen usando los motivos de antes.
+- **Pendientes:** selección, polígonos, formas compuestas y transformables, escala editable, resolución configurable, importación/exportación JSON de dibujos, pruebas de rendimiento y aceptación visual. Esta implementación inicia pero no completa toda la fase.
