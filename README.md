@@ -12,7 +12,7 @@
 - Almacenamiento exclusivo para VR3: `void-rescue-iii.landscape.v1`, `void-rescue-iii.preferences.v1`, `void-rescue-iii.records.v1` y `void-rescue-iii.pilot.v1`.
 - Nombre, metadatos HTML y paquete npm renombrados para distinguir el prototipo.
 
-El editor de rotación ya fue probado localmente con 16 recorridos E2E aprobados. **La rama de dos planos todavía requiere compilación, pruebas de navegador y revisión visual local.** No hay publicación de VR3 en Pages ni lanzamiento oficial.
+El editor de rotación ya fue probado localmente con 16 recorridos E2E aprobados. **La rama de dos planos ya compiló y superó 118 pruebas unitarias y 24 E2E Playwright en la computadora del usuario. Queda pendiente la revisión visual manual de profundidad, paralaje y oclusión durante el vuelo.** No hay publicación de VR3 en Pages ni lanzamiento oficial.
 
 ## Ejecución local
 
