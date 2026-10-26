@@ -2,7 +2,7 @@
 
 **Estado: fase inicial (v0.1.0, NO publicada).** Base heredada de [Void Rescue II](https://github.com/raulcamaracarreon/Void-Rescue-II), bajo licencia MIT. La versión oficial de Void Rescue II permanece independiente e inalterada.
 
-> **Aún no es el juego nuevo completo.** En esta fase se conserva la jugabilidad espacial de VR2 y se incorpora el editor de rotación de ambientes mejorado. La selección de helicópteros, los nuevos enemigos y el editor de dibujo/capas de primer plano son características **planificadas, no implementadas**.
+> **Aún no es el juego nuevo completo.** Se conserva la jugabilidad espacial de VR2 y se ha validado localmente el editor de rotación (16 pruebas E2E aprobadas por el usuario). En la rama `feat/foreground-layers` se implementó una **primera capa visual de primer plano** pendiente de validación: árboles, cercas y rejas con activación, color, opacidad y paralaje; sin colisiones. El dibujo manual, los helicópteros y los nuevos enemigos siguen pendientes.
 
 ## Qué funciona como base
 
@@ -12,7 +12,7 @@
 - Almacenamiento exclusivo para VR3: `void-rescue-iii.landscape.v1`, `void-rescue-iii.preferences.v1`, `void-rescue-iii.records.v1` y `void-rescue-iii.pilot.v1`.
 - Nombre, metadatos HTML y paquete npm renombrados para distinguir el prototipo.
 
-La mejora del editor y la identidad deben **probarse localmente antes de considerarlas estables**. No hay publicación de VR3 en Pages ni lanzamiento oficial.
+El editor de rotación ya fue probado localmente con 16 recorridos E2E aprobados. **El primer plano todavía requiere compilación, pruebas de navegador y revisión visual local.** No hay publicación de VR3 en Pages ni lanzamiento oficial.
 
 ## Ejecución local
 
@@ -22,7 +22,7 @@ Requiere Node.js 22.12 o superior.
 npm ci
 npm run build
 npm run test
-npx playwright test tests/e2e/landscape.spec.ts
+npx playwright test tests/e2e/landscape.spec.ts tests/e2e/foreground.spec.ts
 npm run dev
 ```
 
@@ -40,9 +40,9 @@ No se sustituirán el núcleo de simulación, la física ni las reglas probadas 
 
 - [Visión y ruta de desarrollo](docs/VR3_ROADMAP.md).
 - [Arquitectura objetivo](docs/VR3_ARCHITECTURE.md).
-- [Prueba local y futura separación en repositorio propio](docs/VR3_LOCAL_SETUP.md).
+- [Pruebas locales del repositorio independiente](docs/VR3_LOCAL_SETUP.md).
 - [README histórico de la base VR2](docs/README_VR2_BASE.md).
 
 **Automatizaciones:** los workflows de validación y Pages quedan manuales durante la etapa de prototipo; el workflow de releases exclusivo de VR2 no se incluye. No crear tags de versión VR2 desde esta rama.
 
-**Importante:** hasta disponer de un repositorio remoto independiente, esta preparación reside provisionalmente en `feat/void-rescue-iii-bootstrap` del repositorio de VR2. No fusionar esa rama hacia la rama `main` de VR2.
+**Repositorio independiente creado:** [Void-Rescue-III](https://github.com/raulcamaracarreon/Void-Rescue-III). Los cambios de primer plano se desarrollan en `feat/foreground-layers`, sin alterar `main` hasta su validación. El remoto `vr2-base` es sólo una referencia histórica.
