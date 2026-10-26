@@ -15,15 +15,15 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 
 ## Fases e hitos de aceptación
 
-### 0. Arranque independiente (en marcha)
+### 0. Arranque independiente (completado y validado para el editor de rotación)
 
 - [x] Crear rama provisional partiendo de la mejora del editor de paisajes.
 - [x] Nombre y versión de prototipo propios; claves de almacenamiento nuevas.
 - [x] Eliminar el workflow de releases exclusivo de VR2 y hacer manuales los demás workflows.
-- [ ] Construir y ejecutar pruebas locales; verificar que nada de VR2 cambió.
-- [ ] Crear repositorio **Void-Rescue-III** y trasladar el desarrollo a su `main` tras validación.
+- [x] Pruebas locales de rotación: 16 Playwright aprobadas y servidor Vite iniciado (confirmación del usuario).
+- [x] Repositorio independiente **Void-Rescue-III** creado y copiado a su `main` (push y remotos verificados).
 
-### 1. Editor de rotación (implementado, pendiente de pruebas)
+### 1. Editor de rotación (validación funcional confirmada)
 
 - [x] Separar ambientes activos y excluidos.
 - [x] Numerar y distribuir activos en dos columnas de flujo vertical.
@@ -31,12 +31,16 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] Comprobar vista estrecha, teclado, puntero y casos de biblioteca extensa.
 - [ ] Probar recarga, selección secuencial vs aleatoria y preservación de paisajes personalizados.
 
-### 2. Motor visual por capas (pendiente)
+### 2. Motor visual por capas (primer incremento implementado en rama, pendiente de pruebas)
 
-- Capas: cielo, fondo distante, fondo cercano, mundo jugable y primer plano opcional.
-- Distinguir capas puramente gráficas de `Terrain` y de las colisiones de entidades.
-- Conservar oclusión, escala, orden de dibujo y desplazamiento relativo configurables.
-- Aceptación: alternar una capa de rejas/árboles sin alterar impactos, rescates ni avance de oleada.
+- [x] Capa **opcional** visual de primer plano en `ForegroundDecor.ts`, con motivos de árboles, cercas y rejas.
+- [x] Geometría procedural repetible en mundo circular; desplazamiento configurable por paralaje; recursos compartidos para tres copias contiguas.
+- [x] Control de activación, motivo, color, opacidad y factor de paralaje desde el editor existente. Datos almacenados dentro de cada estilo personalizado; presets sin modificación.
+- [x] Conservar `Terrain`, las colisiones y la simulación sin cambios: sólo `WorldScene` vincula la capa visual.
+- [x] Añadir pruebas unitarias de serialización/saneamiento y generación determinista; E2E de persistencia y biblioteca.
+- [ ] Ejecutar build, unitarias y Playwright de ambos backends en la máquina del usuario, revisar visualmente oclusión y rendimiento.
+- [ ] Extender a varias capas independientes y otras siluetas configurables; añadir editor de dibujo en fase 3.
+- **Aceptación pendiente:** probar que activar y desactivar las rejas/árboles no altera impactos, rescates ni avance de oleada en una partida real.
 
 ### 3. Editor de elementos y exportación (pendiente)
 
