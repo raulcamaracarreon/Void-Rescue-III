@@ -147,9 +147,29 @@ test('ofrece gradiente normal e inverso independiente en cada plano y conserva e
   await expect(frontSwatch).toBeDisabled();
   const normalMid = await midSwatch.inputValue();
   const normalFront = await frontSwatch.inputValue();
+  const palette = await dialog.locator('.landscape-swatches span')
+    .evaluateAll(elements => elements.map(element => ({
+      label: element.getAttribute('aria-label'),
+      color: (element as HTMLElement).style.backgroundColor,
+    })));
+  const nearestBackdrop = palette.at(-3)!.color;
+  const penultimateBackdrop = palette.at(-4)!.color;
+  const middlePreview = palette.at(-2)!;
+  const frontPreview = palette.at(-1)!;
+  expect(middlePreview.label).toBe('Tercer plano');
+  expect(frontPreview.label).toBe('Primer plano');
+  expect(new Set([penultimateBackdrop, nearestBackdrop, middlePreview.color, frontPreview.color]).size)
+    .toBe(4);
+  const toCssRgb = (hex: string): string =>
+    'rgb(' + [1, 3, 5].map(i => Number.parseInt(hex.slice(i, i + 2), 16)).join(', ') + ')';
+  expect(middlePreview.color).toBe(toCssRgb(normalMid));
+  expect(frontPreview.color).toBe(toCssRgb(normalFront));
   await midInvert.check();
   const inverseMid = await midSwatch.inputValue();
   expect(inverseMid).not.toEqual(normalMid);
+  expect(toCssRgb(inverseMid)).not.toBe(penultimateBackdrop);
+  expect(Number.parseInt(inverseMid.slice(1, 3), 16))
+    .toBeGreaterThan(Number.parseInt(normalMid.slice(1, 3), 16));
   await expect(frontSwatch).toHaveValue(normalFront);
   await frontInvert.check();
   expect(await frontSwatch.inputValue()).not.toEqual(normalFront);
