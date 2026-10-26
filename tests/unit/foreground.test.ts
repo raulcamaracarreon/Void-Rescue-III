@@ -27,7 +27,7 @@ describe('primer plano decorativo opcional', () => {
       opacity: Infinity, parallax: -4 })).toEqual({ ...DEFAULT_FOREGROUND, parallax: 1 });
     expect(sanitizeForeground({ enabled: true, kind: 'grille', color: '#abcdef',
       opacity: 12, parallax: 2 })).toEqual({
-      ...DEFAULT_FOREGROUND, enabled: true, kind: 'grille', color: '#abcdef', opacity: 0.85, parallax: 1.35,
+      ...DEFAULT_FOREGROUND, enabled: true, kind: 'grille', color: '#abcdef', opacity: 1, parallax: 1.35,
     });
     const older = defaultLandscapePreferences();
     delete older.custom.foreground;
@@ -194,6 +194,8 @@ describe('primer plano decorativo opcional', () => {
       .toMatchObject({ kind: 'buildings', spanPercent: 65 });
     expect(sanitizeMidground({ spanPercent: -1 }).spanPercent).toBe(5);
     expect(sanitizeForeground({ spanPercent: 400 }).spanPercent).toBe(100);
+    expect(sanitizeForeground({ opacity: 1 }).opacity).toBe(1);
+    expect(sanitizeMidground({ opacity: 1 }).opacity).toBe(1);
     expect(sanitizeForeground({ spanPercent: Infinity }).spanPercent).toBe(100);
     expect(sanitizeForeground({ spanPercent: 24.6 }).spanPercent).toBe(25);
   });
