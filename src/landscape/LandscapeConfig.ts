@@ -190,17 +190,41 @@ export function mixLandscapeColors(sky: string, front: string, t: number): strin
   return '#' + components.join('');
 }
 
-/** Resolve a decorative plane against the same two-color palette used by automatic landscapes.
- * This does not mutate the stored manual color, so switching back always restores it.
- * The reversed option samples the opposite end of that same gradient (t -> 1-t).
+/** Decorative colors are TWO NEW gradient steps beyond the closest background,
+ * not samples that duplicate an already-visible mountain/building layer.
+ *
+ * When auto-generated, the background palette reserves two of its original RGB
+ * steps for decor, keeping all requested colors within the user-selected gamut.
+ * The signed contrast is always darker toward the viewer; inverse is lighter.
+ * In the reverse direction we use half-step positions to avoid repeating an
+ * existing background color (notably the penultimate mountain).
+ *
+ * For advanced/custom palettes, use the actual last two visible layers as the
+ * source of the step. Never mutate the stored manual color or background colors.
  */
 export function decorColorForStyle(style: LandscapeStyle, plane: 'foreground' | 'midground'): string {
   const decor = style[plane] ?? (plane === 'foreground' ? DEFAULT_FOREGROUND : DEFAULT_MIDGROUND);
   if (decor.colorMode !== 'gradient') return decor.color;
-  const start = style.automatic?.skyColor ?? style.skyTop;
-  const end = style.automatic?.frontColor ?? style.layers.at(-1)?.color ?? style.skyBottom;
-  const depthPosition = plane === 'foreground' ? 0.95 : 0.75;
-  return mixLandscapeColors(start, end, decor.invertGradient ? 1 - depthPosition : depthPosition);
+  const nearest = style.layers.at(-1)?.color ?? style.automatic?.frontColor ?? style.skyBottom;
+  const previous = style.layers.at(-2)?.color ?? style.automatic?.skyColor ?? style.skyTop;
+  const rgb = (hex: string): number[] => [1, 3, 5].map(i => Number.parseInt(hex.slice(i, i + 2), 16));
+  const near = rgb(nearest);
+  const prev = rgb(previous);
+  const luminance = (channels: number[]): number =>
+    channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
+  // Reversal offsets avoid landing exactly on older backdrop color steps.
+  const backgroundGetsDarker = luminance(near) < luminance(prev);
+  const distance = plane === 'midground' ? 1 : 2;
+  const stepCount = decor.invertGradient
+    ? (backgroundGetsDarker ? distance - 0.5 : distance)
+    : (backgroundGetsDarker ? distance : distance - 0.5);
+  const direction = decor.invertGradient ? 1 : -1;
+  return '#' + near.map((component, i) => {
+    const delta = Math.abs(component - prev[i]!);
+    // A flat channel remains unchanged: no fictitious hue is introduced.
+    const extended = Math.max(0, Math.min(255, Math.round(component + direction * delta * stepCount)));
+    return extended.toString(16).padStart(2, '0');
+  }).join('');
 }
 
 const AUTO_PRESETS: Record<LandscapePreset, AutomaticLandscape> = {
@@ -239,14 +263,20 @@ function copyAutomatic(config: AutomaticLandscape): AutomaticLandscape { return 
 
 export function buildAutomaticLandscape(base: LandscapeStyle, config: AutomaticLandscape): LandscapeStyle {
   const count = config.layerCount;
+  // The selected two colors now span N background layers PLUS two additional
+  // decor tones whenever at least one decorative plane uses automatic color.
+  // Old manual-color environments retain their exact original background colors.
+  const gradientDecorEnabled = (base.foreground?.enabled && base.foreground.colorMode === 'gradient')
+    || (base.midground?.enabled && base.midground.colorMode === 'gradient');
+  const paletteSteps = count + (gradientDecorEnabled ? 2 : 0);
   const layers: LandscapeLayer[] = Array.from({ length: count }, (_, index) => {
     const depth = count === 1 ? 1 : index / (count - 1);
     const type: LandscapeLayerKind = config.composition === 'mixed'
       ? (index % 3 === 2 ? 'buildings' : 'mountains') : config.composition;
     return {
       type,
-      // The sky is the unpainted layer zero; (i + 1) / count follows the original generator.
-      color: mixLandscapeColors(config.skyColor, config.frontColor, (index + 1) / count),
+      // Reserve two more RGB steps for the third and first plane, if needed.
+      color: mixLandscapeColors(config.skyColor, config.frontColor, (index + 1) / paletteSteps),
       amplitude: Math.round(6 + 20 * depth),
       detail: Math.round(12 + 73 * depth),
     };
