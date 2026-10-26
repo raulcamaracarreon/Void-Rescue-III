@@ -75,12 +75,15 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 
 **Primera entrega en `feat/phase3-paint-editor`:**
 - [x] Opacidad de ambos planos ampliada de 85 % a **100 %**, con validación y prueba explícita.
-- [x] Motivo `drawing` con máscara de bits monocroma v1 (96 × 32 píxeles), independiente por plano y guardado dentro de cada paisaje.
+- [x] Motivo `drawing` con máscara de bits monocroma v1, independiente por plano y guardado dentro de cada paisaje. Cuatro resoluciones válidas: 96 × 32, 192 × 64, **288 × 96 inicial** y 384 × 128; lectura retrocompatible de máscaras antiguas de 96 × 32.
 - [x] Ventana de edición estilo Paint: pincel, borrador, línea, rectángulo, limpiar, deshacer/rehacer y cancelar/aplicar.
 - [x] Geometría visual 2.5D a partir de píxeles, con color/opacidad/paralaje existentes; sin interacción con colisiones.
+- [x] **Corrección de repetición (25/10/2026):** tamaño del motivo fijo en el mundo (150 × 50 unidades), repetición horizontal dentro de `spanPercent`, recorte geométrico únicamente de la última copia. Geometría compartida entre repeticiones y las tres copias del mundo; no se estira la imagen.
+- [x] Selector de cuatro resoluciones con **288 × 96 por defecto**, redimensionado vecino más cercano para dibujos existentes y cambios de resolución reversibles en el historial. Sin migraciones destructivas de paisajes guardados.
+- [x] Pruebas de tamaños, compatibilidad, mosaicos geométricos, recorte de borde y cambios de resolución en editor añadidas; **pendientes de ejecutar**.
 - [x] Saneamiento acotado de máscaras y copia profunda entre paisajes; tests unitarios + Playwright añadidos.
 - [ ] Ejecutar `npm run build`, `npm run test` y E2E en el equipo del usuario, revisar dibujo y persistencia real y ambos backends.
-- [ ] Herramientas posteriores: polígono, dibujo de figuras compuestas, selección de objetos/píxeles, copiar/duplicar, desplazar, escala y ajustes de dimensiones del lienzo sin pérdida de dibujos.
+- [ ] Herramientas posteriores: polígono, dibujo de figuras compuestas, selección de objetos/píxeles, copiar/duplicar, desplazar y escala física independiente del motivo. El lienzo ya permite resoluciones acotadas, pero sigue pendiente controlar su tamaño libre.
 - [ ] Exportación e importación JSON versionada y validada, separada de nombres HTML y datos ejecutables.
 - [ ] Validar visualmente edición en dos planos, mundo circular, transparencia 100 %, opacidad, gradiente normal/inverso y restauración por oleada.
 
