@@ -4,6 +4,7 @@ import {
   landscapeForWave,
   resolveLandscape, sanitizeLandscapePreferences,
 } from '../landscape/LandscapeConfig';
+import { DecorPaintEditor } from './DecorPaintEditor';
 import type {
   AutomaticLandscape, LandscapeEditorMode, LandscapeLayer, LandscapePreferences,
   LandscapeSelection, LandscapeStyle,
@@ -21,6 +22,7 @@ export class LandscapePanel {
   private editingId: string | null = null;
   private readonly nameInput: HTMLInputElement;
   private readonly rotationList: HTMLElement;
+  private readonly paintEditor: DecorPaintEditor;
 
   constructor(root: HTMLElement, initial: LandscapePreferences,
     private readonly onChange: (value: LandscapePreferences) => void,
@@ -118,6 +120,7 @@ export class LandscapePanel {
               <option value="fence">Cercas</option>
               <option value="grille">Rejas</option>
               <option value="buildings">Edificios</option>
+              <option value="drawing">Dibujo propio</option>
             </select>
           </label>
           <label>Modo de color
@@ -134,6 +137,9 @@ export class LandscapePanel {
           <label>Paralaje (%) <input type="number" min="40" max="100" step="1" data-midground="parallax" aria-label="Paralaje de tercer plano"></label>
           <label>Longitud lateral (%) <input type="number" min="5" max="100" step="5" data-midground="spanPercent" aria-label="Longitud lateral de tercer plano" title="Porcentaje del mundo circular ocupado por esta franja (100 = mundo completo)"></label>
         </div>
+        <div class="landscape-buttons decor-paint-open">
+          <button type="button" data-paint-open="midground" aria-label="Dibujar tercer plano">Dibujar tercer plano (Paint)</button>
+        </div>
       </section>
       <section class="landscape-foreground" aria-label="Elementos de primer plano">
         <h3>Primer plano · elementos decorativos</h3>
@@ -148,6 +154,7 @@ export class LandscapePanel {
               <option value="fence">Cercas</option>
               <option value="grille">Rejas</option>
               <option value="buildings">Edificios</option>
+              <option value="drawing">Dibujo propio</option>
             </select>
           </label>
           <label>Modo de color
@@ -164,6 +171,9 @@ export class LandscapePanel {
           <label>Paralaje (%) <input type="number" min="100" max="135" step="1" data-foreground="parallax" aria-label="Paralaje de primer plano"></label>
           <label>Longitud lateral (%) <input type="number" min="5" max="100" step="5" data-foreground="spanPercent" aria-label="Longitud lateral de primer plano" title="Porcentaje del mundo circular ocupado por esta franja (100 = mundo completo)"></label>
         </div>
+        <div class="landscape-buttons decor-paint-open">
+          <button type="button" data-paint-open="foreground" aria-label="Dibujar primer plano">Dibujar primer plano (Paint)</button>
+        </div>
       </section>
       <div class="landscape-common">
         <label>Estrellas <input type="checkbox" data-common="stars" aria-label="Mostrar estrellas"></label>
@@ -178,6 +188,7 @@ export class LandscapePanel {
       <p class="landscape-help">Las siluetas cambian de semilla al avanzar de oleada. El modo Automático por oleada cambia también de paleta.</p>
     `;
     root.append(this.dialog);
+    this.paintEditor = new DecorPaintEditor(root);
     this.selection = this.dialog.querySelector<HTMLSelectElement>('#landscape-selection')!;
     this.mode = this.dialog.querySelector<HTMLSelectElement>('#landscape-mode')!;
     this.layers = this.dialog.querySelector<HTMLElement>('.landscape-layers')!;
@@ -230,6 +241,27 @@ export class LandscapePanel {
         this.commit();
       });
     }
+    for (const button of this.dialog.querySelectorAll<HTMLButtonElement>('[data-paint-open]')) {
+      button.addEventListener('click', () => {
+        const plane = button.dataset.paintOpen === 'midground' ? 'midground' : 'foreground';
+        const visible = resolveLandscape(this.preferences, this.currentWave(), this.currentSeed()).style;
+        const current = plane === 'midground' ? visible.midground : visible.foreground;
+        this.paintEditor.show(plane === 'midground' ? 'tercer plano' : 'primer plano',
+          current?.bitmap, bitmap => {
+            const style = this.mutableStyle();
+            const config = plane === 'midground'
+              ? (style.midground ?? { ...DEFAULT_MIDGROUND })
+              : (style.foreground ?? { ...DEFAULT_FOREGROUND });
+            config.kind = 'drawing';
+            config.enabled = true;
+            config.bitmap = bitmap;
+            if (plane === 'midground') style.midground = config;
+            else style.foreground = config;
+            this.commit();
+            this.render();
+          });
+      });
+    }
     for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-foreground], [data-midground]')) {
       input.addEventListener('change', () => {
         const style = this.mutableStyle();
@@ -244,7 +276,7 @@ export class LandscapePanel {
           case 'invertGradient': decor.invertGradient = (input as HTMLInputElement).checked; break;
           case 'kind':
             decor.kind = input.value === 'fence' || input.value === 'grille'
-              || input.value === 'buildings' ? input.value : 'trees';
+              || input.value === 'buildings' || input.value === 'drawing' ? input.value : 'trees';
             break;
           case 'spanPercent':
             decor.spanPercent = Math.max(5, Math.min(100, Math.round(Number(input.value) || 5)));
