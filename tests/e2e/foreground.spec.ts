@@ -134,8 +134,8 @@ test('ofrece gradiente normal e inverso independiente en cada plano y conserva e
   const frontMode = dialog.getByRole('combobox', { name: 'Modo de color de primer plano' });
   const midInvert = dialog.getByRole('checkbox', { name: 'Invertir gradiente de tercer plano' });
   const frontInvert = dialog.getByRole('checkbox', { name: 'Invertir gradiente de primer plano' });
-  const midSwatch = dialog.getByRole('colorwell', { name: 'Color de tercer plano' });
-  const frontSwatch = dialog.getByRole('colorwell', { name: 'Color de primer plano' });
+  const midSwatch = dialog.locator('input[type="color"][data-midground="color"]');
+  const frontSwatch = dialog.locator('input[type="color"][data-foreground="color"]');
   await expect(midInvert).toBeDisabled();
   await expect(frontInvert).toBeDisabled();
 
@@ -169,8 +169,8 @@ test('ofrece gradiente normal e inverso independiente en cada plano y conserva e
   await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
   const reopened = page.getByRole('dialog', { name: 'Personalizar paisaje' });
   await reopened.getByRole('combobox', { name: 'Modo de color de primer plano' }).selectOption('manual');
-  await expect(reopened.getByRole('colorwell', { name: 'Color de primer plano' })).toBeEnabled();
-  await expect(reopened.getByRole('colorwell', { name: 'Color de primer plano' }))
+  await expect(reopened.locator('input[type="color"][data-foreground="color"]')).toBeEnabled();
+  await expect(reopened.locator('input[type="color"][data-foreground="color"]'))
     .toHaveValue(reloaded.library[0]!.style.foreground!.color);
   await expect(reopened.getByRole('checkbox', { name: 'Invertir gradiente de primer plano' }))
     .toBeDisabled();
