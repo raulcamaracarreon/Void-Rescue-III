@@ -53,13 +53,13 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 
 ## Fase 3 — primera entrega de dibujo raster (pendiente de validación local)
 
-- `src/landscape/LandscapeConfig.ts`: `DecorBitmap` v1 (96 × 32, filas binarias), `kind:'drawing'`, validación estricta, datos opcionales y copia profunda por plano/paisaje. No importa HTML ni scripts.
+- `src/landscape/LandscapeConfig.ts`: `DecorBitmap` v1 (filas binarias; resoluciones 96 × 32, 192 × 64, 288 × 96 por defecto, 384 × 128), `kind:'drawing'`, validación estricta, datos opcionales y copia profunda por plano/paisaje. No importa HTML ni scripts.
 - `src/landscape/DecorDrawing.ts`: operaciones puras para pincel, borrador, línea Bresenham y rectángulo; independientes del DOM, Three.js y simulación.
 - `src/ui/DecorPaintEditor.ts`: diálogo Paint con lienzo pixelado, puntero, vista previa, 30 estados máximos de deshacer y rehacer, aplicar y cancelar. No altera el estado del juego hasta aplicar.
 - `src/ui/LandscapePanel.ts`: botones de edición separados para primero y tercero. Al aplicar, guarda la máscara en el estilo personalizado y activa `kind:'drawing'`; los motivos procedurales se preservan como alternativas.
-- `src/render/ForegroundDecor.ts`: convierte tramos horizontales de píxeles pintados en rectángulos Three.js en z=19 / z=-18. Colorea todo mediante los parámetros del plano (manual/gradiente/inversión/opacidad 10–100 %, paralaje y longitud). El bitmap escala lateralmente al ancho de la franja en esta versión; el escalado no destructivo se desarrollará después.
+- `src/render/ForegroundDecor.ts`: convierte tramos horizontales de píxeles pintados en rectángulos Three.js en z=19 / z=-18. Colorea todo mediante los parámetros del plano (manual/gradiente/inversión/opacidad 10–100 %, paralaje y longitud). El motivo tiene 150 × 50 unidades de mundo, repite su geometría compartida por los tres mundos adyacentes y se recorta geométricamente en la última repetición sin escalar horizontalmente la silueta. El cambio de resolución usa vecino más cercano. El escalado físico libre permanece pendiente.
 - Conserva los 2400 puntos del mundo circular; ningún píxel crea colisión. Los datos guardados anteriores no tienen `bitmap` y siguen usando los motivos de antes.
-- **Pendientes:** selección, polígonos, formas compuestas y transformables, escala editable, resolución configurable, importación/exportación JSON de dibujos, pruebas de rendimiento y aceptación visual. Esta implementación inicia pero no completa toda la fase.
+- **Pendientes:** selección, polígonos, formas compuestas y transformables, escala física editable, ajuste libre de dimensiones, importación/exportación JSON de dibujos, pruebas de rendimiento y aceptación visual. Esta implementación inicia pero no completa toda la fase.
 
 
 ## Revisión cromática — extensión del gradiente automático (rama de fase 3)
@@ -70,3 +70,12 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 - La vista previa en `LandscapePanel.paintSwatches` utiliza la resolución cromática compartida por `WorldScene`, de modo que muestra N colores de fondo más los tonos de los planos activos.
 - El esquema persistido `LandscapeStyle` **no cambia**. `colorMode`, `invertGradient`, los tonos manuales y los mapas de bits permanecen iguales.
 - Estado: cambios implementados y pruebas adaptadas, **pendientes de ejecución y aceptación visual local**. No fusionar a `main` sin comprobación.
+
+## Corrección de fase 3 — resolución y repetición sin estiramiento (25/10/2026)
+
+- `DECOR_BITMAP_WIDTHS` admite exactamente `[96,192,288,384]`, con alturas correspondientes `[32,64,96,128]` en formato 3:1. `blankDecorBitmap()` devuelve 288 × 96, mientras que `sanitizeDecorBitmap()` admite también los tres tamaños alternativos y preserva el formato v1.
+- `resizeDecorBitmap` hace remuestreo *nearest-neighbor* sin tocar la fuente; un cambio de resolución cuenta como paso para deshacer/rehacer. `Limpiar` conserva la resolución elegida.
+- `drawingMotifWidth` equivale a 150 unidades del mundo para las cuatro resoluciones, con altura constante de 50 unidades. `ForegroundDecor` crea una geometría por motivo (compartida), una geometría secundaria solo si el último mosaico requiere recorte, y tres grupos del mundo circular que contienen copias ligeras del motivo.
+- `spanPercent` define la franja **ocupada por repeticiones**, no el ancho del motivo. Esto mantiene los objetos sin deformaciones y permite que un dibujo de 288 × 96 tenga el mismo tamaño físico que uno de 96 × 32, pero mayor detalle.
+- Limitación actual: no hay control de escalado físico del motivo ni importación/exportación; los dibujos grandes en muchas bibliotecas podrían alcanzar el límite de almacenamiento del navegador. Conservar y no sobrescribir la biblioteca en migraciones.
+- Pruebas añadidas para los cuatro tamaños, máscaras v1 antiguas, tesselación, recorte final y recuperación desde la UI; pendientes de verificación local.
