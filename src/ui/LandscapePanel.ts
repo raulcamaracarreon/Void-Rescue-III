@@ -549,11 +549,20 @@ export class LandscapePanel {
     this.swatches.replaceChildren();
     if (this.effectiveMode() !== 'automatic') return;
     const style = resolveLandscape(this.preferences, this.currentWave(), this.currentSeed()).style;
-    const colors = [style.automatic!.skyColor, ...style.layers.map(layer => layer.color)];
-    for (let i = 0; i < colors.length; i++) {
+    const colors = [
+      { color: style.automatic!.skyColor, label: 'Cielo' },
+      ...style.layers.map((layer, i) => ({ color: layer.color, label: `Capa de fondo ${i + 1}` })),
+      ...(style.midground?.enabled ? [{
+        color: decorColorForStyle(style, 'midground'), label: 'Tercer plano',
+      }] : []),
+      ...(style.foreground?.enabled ? [{
+        color: decorColorForStyle(style, 'foreground'), label: 'Primer plano',
+      }] : []),
+    ];
+    for (const item of colors) {
       const swatch = document.createElement('span');
-      swatch.style.backgroundColor = colors[i]!;
-      swatch.title = i === 0 ? 'Cielo' : `Capa ${i}`;
+      swatch.style.backgroundColor = item.color;
+      swatch.title = item.label;
       swatch.setAttribute('aria-label', swatch.title);
       this.swatches.append(swatch);
     }
