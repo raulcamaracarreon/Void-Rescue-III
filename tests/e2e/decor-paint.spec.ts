@@ -82,3 +82,52 @@ test('cancelar no cambia el dibujo, y deshacer y rehacer conservan la máscara',
   expect(saved.foreground?.kind).toBe('drawing');
   expect(saved.foreground?.bitmap?.rows.join('')).toContain('1');
 });
+
+
+test('usa 288×96 por defecto, permite variar resolución sin borrar ni estirar el dibujo', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  let editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  let resolution = editor.getByRole('combobox', { name: 'Resolución del lienzo' });
+  await expect(resolution).toHaveValue('288');
+  await expect(editor.getByRole('status')).toContainText('288 × 96');
+  const bounds = await editor.locator('canvas').boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.2, bounds!.y + bounds!.height * 0.25);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.65, bounds!.y + bounds!.height * 0.7, { steps: 10 });
+  await page.mouse.up();
+  await expect(editor.getByRole('status')).toContainText('pintados');
+
+  await resolution.selectOption('384');
+  await expect(editor.getByRole('status')).toContainText('384 × 128');
+  await editor.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(resolution).toHaveValue('288');
+  await editor.getByRole('button', { name: 'Rehacer' }).click();
+  await expect(resolution).toHaveValue('384');
+  await resolution.selectOption('192');
+  await resolution.selectOption('96');
+  await expect(editor.getByRole('status')).toContainText('96 × 32');
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+
+  const first = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom.midground!.bitmap!);
+  expect(first.width).toBe(96);
+  expect(first.height).toBe(32);
+  expect(first.rows.join('')).toContain('1');
+  await landscape.getByRole('button', { name: /LISTO/ }).click();
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__VOID_RESCUE__));
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const reopened = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await reopened.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  resolution = editor.getByRole('combobox', { name: 'Resolución del lienzo' });
+  await expect(resolution).toHaveValue('96'); // legacy masks reopen without migration
+  await resolution.selectOption('288');
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const after = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom.midground!.bitmap!);
+  expect(after.width).toBe(288);
+  expect(after.height).toBe(96);
+  expect(after.rows.join('')).toContain('1');
+});
