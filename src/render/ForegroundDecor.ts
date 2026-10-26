@@ -1,7 +1,8 @@
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshBasicNodeMaterial } from 'three/webgpu';
 import { Random } from '../core/Random';
 import { CONFIG } from '../game/config';
-import type { ForegroundConfig, ForegroundKind } from '../landscape/LandscapeConfig';
+import { blankDecorBitmap, DECOR_BITMAP_HEIGHT, DECOR_BITMAP_WIDTH } from '../landscape/LandscapeConfig';
+import type { DecorBitmap, ForegroundConfig, ForegroundKind } from '../landscape/LandscapeConfig';
 
 /** Z-axis ordering in the orthographic camera: mountains < middle < vehicle < front. */
 export const MIDGROUND_DEPTH = -18;
@@ -15,7 +16,7 @@ export function decorSpanWidth(spanPercent: number): number {
 }
 
 function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number,
-  spanPercent: number): BufferGeometry {
+  spanPercent: number, bitmap?: DecorBitmap): BufferGeometry {
   const vertices: number[] = [];
   const indices: number[] = [];
   const spanWidth = decorSpanWidth(spanPercent);
@@ -29,7 +30,22 @@ function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number,
     vertices.push(x - halfWidth, y, depth, x + halfWidth, y, depth, x, y + height, depth);
     indices.push(i, i + 1, i + 2);
   };
-  if (kind === 'trees') {
+  if (kind === 'drawing') {
+    const mask = bitmap ?? blankDecorBitmap();
+    const cellWidth = spanWidth / DECOR_BITMAP_WIDTH;
+    const cellHeight = 50 / DECOR_BITMAP_HEIGHT;
+    for (let row = 0; row < DECOR_BITMAP_HEIGHT; row++) {
+      const line = mask.rows[row]!;
+      let column = 0;
+      while (column < DECOR_BITMAP_WIDTH) {
+        if (line[column] !== '1') { column++; continue; }
+        const start = column;
+        while (column < DECOR_BITMAP_WIDTH && line[column] === '1') column++;
+        const y = 5 + (DECOR_BITMAP_HEIGHT - row - 1) * cellHeight;
+        rect(start * cellWidth, y, (column - start) * cellWidth, cellHeight);
+      }
+    }
+  } else if (kind === 'trees') {
     const random = new Random(seed >>> 0);
     // Keep the original average spacing instead of stretching trees to fit the strip.
     const count = Math.max(1, Math.floor(spanWidth / 75));
@@ -94,7 +110,7 @@ export class ForegroundDecor {
     this.dispose();
     if (!config.enabled) return;
     const seed = (gameSeed ^ styleSeed ^ this.seedOffset ^ Math.imul(wave, 0x9e3779b9)) >>> 0;
-    this.geometry = makeSilhouettes(config.kind, seed, this.depth, config.spanPercent);
+    this.geometry = makeSilhouettes(config.kind, seed, this.depth, config.spanPercent, config.bitmap);
     this.material = new MeshBasicNodeMaterial({
       color: Number.parseInt(config.color.slice(1), 16),
       opacity: config.opacity, transparent: true, depthWrite: false, toneMapped: false,
