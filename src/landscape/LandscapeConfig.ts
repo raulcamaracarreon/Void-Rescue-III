@@ -212,12 +212,12 @@ export function decorColorForStyle(style: LandscapeStyle, plane: 'foreground' | 
   const prev = rgb(previous);
   const luminance = (channels: number[]): number =>
     channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
-  // Reversal offsets avoid landing exactly on older backdrop color steps.
+  // If contrast runs opposite to the original background gradient, offset
+  // the extrapolation beyond whole steps to avoid the penultimate layer.
   const backgroundGetsDarker = luminance(near) < luminance(prev);
   const distance = plane === 'midground' ? 1 : 2;
-  const stepCount = decor.invertGradient
-    ? (backgroundGetsDarker ? distance - 0.5 : distance)
-    : (backgroundGetsDarker ? distance : distance - 0.5);
+  const sameDirection = decor.invertGradient ? !backgroundGetsDarker : backgroundGetsDarker;
+  const stepCount = sameDirection ? distance : distance + 0.5;
   const direction = decor.invertGradient ? 1 : -1;
   return '#' + near.map((component, i) => {
     const delta = Math.abs(component - prev[i]!);
