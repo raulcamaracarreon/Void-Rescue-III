@@ -2,17 +2,25 @@
 
 **Estado: fase inicial (v0.1.0, NO publicada).** Base heredada de [Void Rescue II](https://github.com/raulcamaracarreon/Void-Rescue-II), bajo licencia MIT. La versión oficial de Void Rescue II permanece independiente e inalterada.
 
-> **Aún no es el juego nuevo completo.** Se conserva la jugabilidad espacial de VR2 y se ha validado localmente el editor de rotación (16 pruebas E2E aprobadas por el usuario). La primera capa visual de primer plano (árboles, cercas y rejas) ya fue probada localmente por el usuario. En `feat/dual-decor-layers` se añade un **tercer plano** independiente entre los vehículos y las montañas/edificios. Ambos permiten activar/desactivar, escoger motivo, color, opacidad y paralaje. El dibujo manual, los helicópteros y los nuevos enemigos siguen pendientes.
+> **Aún no es el juego nuevo completo.** Se conserva la jugabilidad espacial de VR2 y se ha validado localmente el editor de rotación (16 pruebas E2E aprobadas por el usuario). La primera capa visual de primer plano (árboles, cercas y rejas) ya fue probada localmente por el usuario. En `feat/dual-decor-layers` se añade un **tercer plano** independiente entre los vehículos y las montañas/edificios. Ambos permiten activar/desactivar, escoger motivo, color, opacidad y paralaje. La primera herramienta de dibujo manual ya está implementada en una rama de la fase 3, pendiente de pruebas. Los helicópteros y los nuevos enemigos siguen pendientes.
 
 ## Fase 0 prioritaria: color automático e inversión de gradiente
 
 Desarrollo en [`feat/decor-auto-gradient`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/decor-auto-gradient), **pendiente de compilación y pruebas locales**. Ambos planos decorativos ofrecen color manual o color derivado del gradiente automático de dos extremos, con inversión independiente por plano. El color manual se conserva al alternar; la franja de vista previa incluye los planos habilitados y se actualiza al modificar la paleta. No se altera la simulación ni el gradiente de las montañas/edificios de fondo.
 
-**Orden de trabajo:** validar conjuntamente fase 0 y cierre de fase 2 en la rama `feat/decor-buildings-and-span`; después iniciar fase 3 (editor de siluetas y dibujo manual). Edificios y longitud lateral están implementados en esa rama, pero aún no se han compilado ni probado en la máquina del usuario. No ampliar alcance fuera de esta secuencia.
+**Orden de trabajo:** fases 0 y 2 implementadas en sus ramas; el usuario confirmó funcionalmente edificios y longitud lateral. La fase 3 se inicia en `feat/phase3-paint-editor` sin alterar `main`. El ajuste de opacidad 100 % y el primer lienzo Paint requieren validación local. No ampliar alcance fuera de la hoja de ruta.
 
 ## Fase 2 — edificios y longitud lateral de ambos planos
 
 En [`feat/decor-buildings-and-span`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/decor-buildings-and-span) se añadió el motivo **Edificios**, disponible en primer y tercer plano, y un campo **Longitud lateral (%)** independiente para ambos (5–100 %). La longitud define qué porcentaje del ancho circular (2400 unidades de juego) estará cubierto por la franja decorativa. Los elementos no se estiran, la zona restante queda vacía y el patrón se repite por mundo. No modifica la geometría colisionable ni el núcleo de simulación. Falta validación local de esta nueva rama.
+
+## Fase 3 — primer incremento: editor Paint de siluetas
+
+La rama [`feat/phase3-paint-editor`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/phase3-paint-editor) contiene un editor de **máscaras binarias de 96 × 32 píxeles**, independiente para el primer y tercer plano. Herramientas: pincel, borrador, línea, rectángulo, limpiar, deshacer y rehacer. **Aplicar dibujo** guarda el diseño en el ambiente personalizado y selecciona el motivo `Dibujo propio`; **Cancelar** descarta el borrador. Se conserva el color manual o automático/inverso, el paralaje y la longitud lateral. El dibujo ocupa el ancho de la franja configurada; el editor todavía no incluye escalado independiente, capas internas u objetos seleccionables.
+
+El mismo incremento permite opacidad máxima de **100 %** en ambos planos, incluidas máscaras propias. Hay pruebas nuevas de modelo, geometría y navegador, aún sin ejecutar localmente.
+
+**Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
 ## Qué funciona como base
 
@@ -32,7 +40,7 @@ Requiere Node.js 22.12 o superior.
 npm ci
 npm run build
 npm run test
-npx playwright test tests/e2e/landscape.spec.ts tests/e2e/foreground.spec.ts
+npx playwright test tests/e2e/landscape.spec.ts tests/e2e/foreground.spec.ts tests/e2e/decor-paint.spec.ts
 npm run dev
 ```
 
