@@ -19,9 +19,10 @@ El sistema actual usa `src/game/` para simulación y reglas, `src/render/` para 
 ```text
 Escena 2.5D
 ├── Cielo y atmósfera
-├── Fondos de paralaje (lejanos → cercanos)
-├── Mundo jugable (terreno + vehículos + personajes + proyectiles)
-└── Capas de primer plano opcionales (visuales, con oclusión)
+├── Fondos de paralaje (lejanos → cercanos; hasta z=-31)
+├── Tercer plano decorativo opcional (z=-18, paralaje más lento)
+├── Mundo jugable (vehículos z=0, terreno y personajes)
+└── Primer plano decorativo opcional (z=19, paralaje más rápido)
 ```
 
 Una capa visual debería definir como mínimo: `id`, `name`, `enabled`, `depthOrder`, `parallaxFactor`, `opacity`, `objects` y `schemaVersion`. Son campos propuestos, **no tipos ya codificados**. Un objeto editable podrá ser rectángulo, línea, polígono o trazo. La topología envolvente debe respetar la costura horizontal del mundo circular.
@@ -38,4 +39,4 @@ Una capa visual debería definir como mínimo: `id`, `name`, `enabled`, `depthOr
 
 Orden visual de controles: biblioteca → rotación de ambientes → editor de fondo → primer plano → vista previa → exportación. El editor de dibujo debe permitir alternar herramientas sin detener la simulación, pero sus modificaciones se aplicarán como cambios visuales controlados, no como mutaciones directas sobre entidades de juego.
 
-**Incremento inicial ya codificado (pendiente de pruebas):** `src/render/ForegroundDecor.ts` construye geometría de siluetas decorativas con recursos compartidos; `WorldScene` la coloca delante del mundo jugable. `LandscapeStyle.foreground` conserva un único conjunto opcional (tipo, color, opacidad, paralaje) dentro de los paisajes guardados. Esta primera versión no incluye varias capas independientes, dibujo libre ni el formato avanzado propuesto de objetos; permanecen en el diseño objetivo.
+**Dos capas decorativas ya codificadas (rama `feat/dual-decor-layers`, pendiente de pruebas):** `src/render/ForegroundDecor.ts` genera siluetas con recursos compartidos en dos instancias independientes de `WorldScene`. `LandscapeStyle.foreground` conserva el primer plano legado y `LandscapeStyle.midground` añade el tercero, con controles independientes de motivo, color, opacidad, paralaje y activación. Ambos se guardan por ambiente. Los presets antiguos heredan un tercer plano desactivado y mantienen el primer plano. El editor de dibujo libre y objetos personalizados permanece planeado para la fase 3.
