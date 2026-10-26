@@ -506,6 +506,11 @@ export class LandscapePanel {
   close(): void { if (this.dialog.open) this.dialog.close(); }
 
   navigatePad(command: { x: number; y: number; confirm: boolean; back: boolean }): void {
+    // A Paint modal above this dialog owns focus and must not operate hidden controls.
+    if (this.paintEditor.open) {
+      if (command.back) this.paintEditor.dismiss();
+      return;
+    }
     if (command.back) { this.close(); return; }
     const controls = [...this.dialog.querySelectorAll<HTMLElement>('input, select, button')]
       .filter(element => element.getBoundingClientRect().width > 0);
