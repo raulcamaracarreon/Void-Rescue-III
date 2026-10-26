@@ -117,6 +117,7 @@ export class LandscapePanel {
               <option value="trees">Árboles</option>
               <option value="fence">Cercas</option>
               <option value="grille">Rejas</option>
+              <option value="buildings">Edificios</option>
             </select>
           </label>
           <label>Modo de color
@@ -131,6 +132,7 @@ export class LandscapePanel {
           <label>Color / vista previa <input type="color" data-midground="color" aria-label="Color de tercer plano"></label>
           <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-midground="opacity" aria-label="Opacidad de tercer plano"></label>
           <label>Paralaje (%) <input type="number" min="40" max="100" step="1" data-midground="parallax" aria-label="Paralaje de tercer plano"></label>
+          <label>Longitud lateral (%) <input type="number" min="5" max="100" step="5" data-midground="spanPercent" aria-label="Longitud lateral de tercer plano" title="Porcentaje del mundo circular ocupado por esta franja (100 = mundo completo)"></label>
         </div>
       </section>
       <section class="landscape-foreground" aria-label="Elementos de primer plano">
@@ -145,6 +147,7 @@ export class LandscapePanel {
               <option value="trees">Árboles</option>
               <option value="fence">Cercas</option>
               <option value="grille">Rejas</option>
+              <option value="buildings">Edificios</option>
             </select>
           </label>
           <label>Modo de color
@@ -159,6 +162,7 @@ export class LandscapePanel {
           <label>Color / vista previa <input type="color" data-foreground="color" aria-label="Color de primer plano"></label>
           <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-foreground="opacity" aria-label="Opacidad de primer plano"></label>
           <label>Paralaje (%) <input type="number" min="100" max="135" step="1" data-foreground="parallax" aria-label="Paralaje de primer plano"></label>
+          <label>Longitud lateral (%) <input type="number" min="5" max="100" step="5" data-foreground="spanPercent" aria-label="Longitud lateral de primer plano" title="Porcentaje del mundo circular ocupado por esta franja (100 = mundo completo)"></label>
         </div>
       </section>
       <div class="landscape-common">
@@ -239,7 +243,11 @@ export class LandscapePanel {
           case 'colorMode': decor.colorMode = input.value === 'gradient' ? 'gradient' : 'manual'; break;
           case 'invertGradient': decor.invertGradient = (input as HTMLInputElement).checked; break;
           case 'kind':
-            decor.kind = input.value === 'fence' || input.value === 'grille' ? input.value : 'trees';
+            decor.kind = input.value === 'fence' || input.value === 'grille'
+              || input.value === 'buildings' ? input.value : 'trees';
+            break;
+          case 'spanPercent':
+            decor.spanPercent = Math.max(5, Math.min(100, Math.round(Number(input.value) || 5)));
             break;
           case 'color': decor.color = input.value; break;
           case 'opacity':
@@ -716,6 +724,7 @@ export class LandscapePanel {
             input.value = decorColorForStyle(style, plane);
             input.disabled = decor.colorMode === 'gradient';
             break;
+          case 'spanPercent': input.value = String(decor.spanPercent); break;
           case 'opacity': input.value = String(Math.round(decor.opacity * 100)); break;
           case 'parallax': input.value = String(Math.round(decor.parallax * 100)); break;
         }
