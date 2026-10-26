@@ -28,7 +28,7 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 
 **Regla cromática inicial:** se toman colores de la misma interpolación RGB de `AutomaticLandscape.skyColor` → `frontColor`. El tercer plano toma una muestra al 75 % y el primero al 95 %. El modo inverso usa la posición complementaria (25 % y 5 %, respectivamente), permitiendo probar contrastes entre capas. No se agrega un control avanzado de intensidad en esta fase.
 
-**Después de esta fase 0:** volver a cerrar los pendientes de la fase 2: (1) motivo **edificios**, (2) longitud lateral configurable del motivo en ambos planos. Solo entonces iniciar la fase 3 de dibujo manual tipo Paint simplificado.
+**Después de esta fase 0:** cerrar la fase 2 con (1) motivo **edificios** y (2) longitud lateral configurable en ambos planos, desarrollados en `feat/decor-buildings-and-span` y todavía pendientes de verificación local. Solo iniciar la fase 3 de dibujo manual tipo Paint simplificado cuando el usuario valide ambos incrementos.
 
 ## Fases e hitos de aceptación
 
@@ -48,7 +48,7 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] Comprobar vista estrecha, teclado, puntero y casos de biblioteca extensa.
 - [ ] Probar recarga, selección secuencial vs aleatoria y preservación de paisajes personalizados.
 
-### 2. Motor visual por capas (dos planos configurables, pendiente de validación local)
+### 2. Motor visual por capas (edificios y longitud implementados en rama; falta validación)
 
 - [x] Capa **opcional** visual de primer plano en `ForegroundDecor.ts`, con motivos de árboles, cercas y rejas.
 - [x] Geometría procedural repetible en mundo circular; desplazamiento configurable por paralaje; recursos compartidos para tres copias contiguas.
@@ -61,7 +61,12 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] Extender persistencia, saneamiento y pruebas para ambos planos; antiguo campo `foreground` permanece válido y `midground` se inicializa desactivado en guardados anteriores.
 - [x] Compilación `npm run build` correcta (TypeScript + Vite), 118/118 pruebas unitarias y 24/24 E2E Playwright completadas en `chromium-auto` y `chromium-webgl2` (resultados de la terminal del usuario, 25/10/2026).
 - [ ] Revisión visual manual de ambos planos durante el vuelo: superposición delante/detrás de los vehículos, fondo, paralaje, oclusión y rendimiento. El proyecto de navegador `chromium-auto` no confirma por sí solo que se utilizara WebGPU.
-- [ ] Editor de trazos, polígonos, siluetas y objetos individuales: fase 3. Por ahora «editable» significa controles de motivo/color/opacidad/paralaje por plano.
+- [x] **Código en rama `feat/decor-buildings-and-span`**: motivo «Edificios» procedurales y deterministas para ambos planos. No son elementos jugables ni colisionables.
+- [x] **Código en la misma rama**: «Longitud lateral (%)» independiente (5–100 %) para cada plano. El porcentaje define la franja ocupada en cada vuelta del mundo circular, partiendo de x=0; el resto permanece sin decoración. Los motivos se distribuyen sin deformarse ni estirarse.
+- [x] Persistencia y migración: los paisajes guardados sin `spanPercent` mantienen un ancho del 100 %; los controles manuales e inversión de gradiente no cambian.
+- [x] Pruebas unitarias y E2E añadidas para edificios, franja truncada, valores inválidos, independencia y recarga.
+- [ ] Validación local: `npm run build`, `npm run test` y Playwright en `feat/decor-buildings-and-span`; vuelo visual para confirmar tramos vacíos, transición al recorrer el mundo y color/oclusiones.
+- [ ] Editor de trazos, polígonos, siluetas y objetos individuales: fase 3. Por ahora «editable» significa controles de motivo, color, longitud, opacidad y paralaje por plano.
 - **Aceptación pendiente:** probar que activar y desactivar las rejas/árboles no altera impactos, rescates ni avance de oleada en una partida real.
 
 ### 3. Editor de elementos y exportación (pendiente)
