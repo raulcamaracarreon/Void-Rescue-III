@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Mesh } from 'three/webgpu';
 import {
-  copyLandscape, DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences, resolveLandscape,
-  sanitizeForeground, sanitizeMidground, sanitizeLandscapePreferences,
+  copyLandscape, decorColorForStyle, DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences,
+  mixLandscapeColors, resolveLandscape, sanitizeForeground, sanitizeMidground, sanitizeLandscapePreferences,
 } from '../../src/landscape/LandscapeConfig';
 import { ForegroundDecor, FOREGROUND_DEPTH, MIDGROUND_DEPTH } from '../../src/render/ForegroundDecor';
 import { CONFIG } from '../../src/game/config';
@@ -14,7 +14,7 @@ describe('primer plano decorativo opcional', () => {
     const pool = [...preferences.cyclePool];
     preferences.selection = 'custom';
     preferences.custom.foreground = {
-      enabled: true, kind: 'fence', color: '#335544', opacity: 0.55, parallax: 1.2,
+      ...DEFAULT_FOREGROUND, enabled: true, kind: 'fence', color: '#335544', opacity: 0.55, parallax: 1.2,
     };
     const restored = sanitizeLandscapePreferences(JSON.parse(JSON.stringify(preferences)));
     expect(restored.cyclePool).toEqual(pool);
@@ -27,13 +27,76 @@ describe('primer plano decorativo opcional', () => {
       opacity: Infinity, parallax: -4 })).toEqual({ ...DEFAULT_FOREGROUND, parallax: 1 });
     expect(sanitizeForeground({ enabled: true, kind: 'grille', color: '#abcdef',
       opacity: 12, parallax: 2 })).toEqual({
-      enabled: true, kind: 'grille', color: '#abcdef', opacity: 0.85, parallax: 1.35,
+      ...DEFAULT_FOREGROUND, enabled: true, kind: 'grille', color: '#abcdef', opacity: 0.85, parallax: 1.35,
     });
     const older = defaultLandscapePreferences();
     delete older.custom.foreground;
     const restored = sanitizeLandscapePreferences(older);
     expect(restored.custom.foreground).toEqual(DEFAULT_FOREGROUND);
     expect(restored.custom.foreground?.enabled).toBe(false);
+  });
+
+
+  it('deriva colores del mismo gradiente automático normal o invertido por plano', () => {
+    const preferences = defaultLandscapePreferences();
+    preferences.selection = 'custom';
+    preferences.custom.automatic = {
+      skyColor: '#000000', frontColor: '#ffffff', layerCount: 6, composition: 'mixed',
+    };
+    preferences.custom.foreground = {
+      ...DEFAULT_FOREGROUND, enabled: true, color: '#abcdef', colorMode: 'gradient',
+    };
+    preferences.custom.midground = {
+      ...DEFAULT_MIDGROUND, enabled: true, color: '#123456', colorMode: 'gradient',
+    };
+    const normal = resolveLandscape(preferences, 1).style;
+    expect(decorColorForStyle(normal, 'foreground'))
+      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.95));
+    expect(decorColorForStyle(normal, 'midground'))
+      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.75));
+    preferences.custom.foreground.invertGradient = true;
+    const invertedFront = resolveLandscape(preferences, 1).style;
+    expect(decorColorForStyle(invertedFront, 'foreground'))
+      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.05));
+    expect(decorColorForStyle(invertedFront, 'midground'))
+      .toBe(decorColorForStyle(normal, 'midground'));
+    preferences.custom.midground.invertGradient = true;
+    const invertedBoth = resolveLandscape(preferences, 1).style;
+    expect(decorColorForStyle(invertedBoth, 'midground'))
+      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.25));
+    expect(invertedBoth.layers.at(-1)!.color).toBe('#ffffff');
+    expect(preferences.custom.foreground.color).toBe('#abcdef');
+    expect(preferences.custom.midground.color).toBe('#123456');
+  });
+
+  it('preserva colores manuales y migra paisajes anteriores al modo manual', () => {
+    const prefs = defaultLandscapePreferences();
+    prefs.selection = 'custom';
+    prefs.custom.foreground = {
+      ...DEFAULT_FOREGROUND, enabled: true, color: '#517294',
+      colorMode: 'gradient', invertGradient: true,
+    };
+    prefs.custom.midground = {
+      ...DEFAULT_MIDGROUND, enabled: true, color: '#cdef01',
+      colorMode: 'gradient', invertGradient: false,
+    };
+    const restored = sanitizeLandscapePreferences(JSON.parse(JSON.stringify(prefs)));
+    expect(restored.custom.foreground).toEqual(prefs.custom.foreground);
+    expect(restored.custom.midground).toEqual(prefs.custom.midground);
+    const updatedStyle = copyLandscape(restored.custom);
+    updatedStyle.foreground!.colorMode = 'manual';
+    updatedStyle.midground!.colorMode = 'manual';
+    expect(decorColorForStyle(updatedStyle, 'foreground')).toBe('#517294');
+    expect(decorColorForStyle(updatedStyle, 'midground')).toBe('#cdef01');
+
+    const oldFront = sanitizeForeground({ enabled: true, color: '#445566',
+      kind: 'grille', opacity: 0.65, parallax: 1.2 });
+    expect(oldFront.colorMode).toBe('manual');
+    expect(oldFront.invertGradient).toBe(false);
+    expect(oldFront.color).toBe('#445566');
+    expect(sanitizeMidground({ colorMode: 'malicious', invertGradient: 'no' })).toMatchObject({
+      colorMode: 'manual', invertGradient: false,
+    });
   });
 
   it('independiza la configuración del primer plano al duplicar estilos', () => {
