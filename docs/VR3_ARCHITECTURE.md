@@ -60,3 +60,13 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 - `src/render/ForegroundDecor.ts`: convierte tramos horizontales de píxeles pintados en rectángulos Three.js en z=19 / z=-18. Colorea todo mediante los parámetros del plano (manual/gradiente/inversión/opacidad 10–100 %, paralaje y longitud). El bitmap escala lateralmente al ancho de la franja en esta versión; el escalado no destructivo se desarrollará después.
 - Conserva los 2400 puntos del mundo circular; ningún píxel crea colisión. Los datos guardados anteriores no tienen `bitmap` y siguen usando los motivos de antes.
 - **Pendientes:** selección, polígonos, formas compuestas y transformables, escala editable, resolución configurable, importación/exportación JSON de dibujos, pruebas de rendimiento y aceptación visual. Esta implementación inicia pero no completa toda la fase.
+
+
+## Revisión cromática — extensión del gradiente automático (rama de fase 3)
+
+- `buildAutomaticLandscape` reserva **N+2 pasos** desde `skyColor` hasta `frontColor` cuando una capa decorativa *habilitada* usa `colorMode:'gradient'`. Las N capas del fondo pasan a muestrearse en `i/(N+2)` y las dos reservas posteriores se dedican a tercer plano y primer plano.
+- `decorColorForStyle` toma las dos últimas capas **reales** del fondo y deriva un paso de RGB por canal. El tercer plano progresa un paso hacia mayor contraste y el primer plano dos. Se fuerza una progresión hacia tonos más oscuros en modo normal y hacia más claros en inverso; pasos fraccionarios evitan igualar la penúltima capa cuando se invierte la pendiente del fondo.
+- Los colores generados por el modo automático permanecen dentro de los **dos extremos escogidos**. Si los colores son iguales, no existe rango cromático del que extraer tonos distintos. En estilos avanzados, las capas dibujadas manualmente no se reescriben.
+- La vista previa en `LandscapePanel.paintSwatches` utiliza la resolución cromática compartida por `WorldScene`, de modo que muestra N colores de fondo más los tonos de los planos activos.
+- El esquema persistido `LandscapeStyle` **no cambia**. `colorMode`, `invertGradient`, los tonos manuales y los mapas de bits permanecen iguales.
+- Estado: cambios implementados y pruebas adaptadas, **pendientes de ejecución y aceptación visual local**. No fusionar a `main` sin comprobación.
