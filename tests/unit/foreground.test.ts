@@ -37,11 +37,11 @@ describe('primer plano decorativo opcional', () => {
   });
 
 
-  it('deriva colores del mismo gradiente automático normal o invertido por plano', () => {
+  it('extiende el gradiente de dos colores con dos nuevos tonos y no recicla la penúltima capa', () => {
     const preferences = defaultLandscapePreferences();
     preferences.selection = 'custom';
     preferences.custom.automatic = {
-      skyColor: '#000000', frontColor: '#ffffff', layerCount: 6, composition: 'mixed',
+      skyColor: '#f0d0c0', frontColor: '#102030', layerCount: 6, composition: 'mixed',
     };
     preferences.custom.foreground = {
       ...DEFAULT_FOREGROUND, enabled: true, color: '#abcdef', colorMode: 'gradient',
@@ -49,24 +49,92 @@ describe('primer plano decorativo opcional', () => {
     preferences.custom.midground = {
       ...DEFAULT_MIDGROUND, enabled: true, color: '#123456', colorMode: 'gradient',
     };
+    const brightness = (hex: string): number => {
+      const values = [1, 3, 5].map(i => Number.parseInt(hex.slice(i, i + 2), 16));
+      return values[0]! * .2126 + values[1]! * .7152 + values[2]! * .0722;
+    };
     const normal = resolveLandscape(preferences, 1).style;
-    expect(decorColorForStyle(normal, 'foreground'))
-      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.95));
-    expect(decorColorForStyle(normal, 'midground'))
-      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.75));
-    preferences.custom.foreground.invertGradient = true;
-    const invertedFront = resolveLandscape(preferences, 1).style;
-    expect(decorColorForStyle(invertedFront, 'foreground'))
-      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.05));
-    expect(decorColorForStyle(invertedFront, 'midground'))
-      .toBe(decorColorForStyle(normal, 'midground'));
+    // Six old background colors now use eight total steps: the last two are
+    // reserved for the decorative planes, but the user's two endpoints are unchanged.
+    expect(normal.layers).toHaveLength(6);
+    expect(normal.layers[0]!.color).toBe(mixLandscapeColors('#f0d0c0', '#102030', 1 / 8));
+    expect(normal.layers.at(-1)!.color).toBe(mixLandscapeColors('#f0d0c0', '#102030', 6 / 8));
+    const nearest = normal.layers.at(-1)!.color;
+    const penultimate = normal.layers.at(-2)!.color;
+    const middle = decorColorForStyle(normal, 'midground');
+    const front = decorColorForStyle(normal, 'foreground');
+    expect(brightness(middle)).toBeLessThan(brightness(nearest));
+    expect(brightness(front)).toBeLessThan(brightness(middle));
+    expect(new Set([penultimate, nearest, middle, front]).size).toBe(4);
+    expect(front).toBe(mixLandscapeColors('#f0d0c0', '#102030', 1));
+
     preferences.custom.midground.invertGradient = true;
-    const invertedBoth = resolveLandscape(preferences, 1).style;
-    expect(decorColorForStyle(invertedBoth, 'midground'))
-      .toBe(mixLandscapeColors('#000000', '#ffffff', 0.25));
-    expect(invertedBoth.layers.at(-1)!.color).toBe('#ffffff');
+    const mixed = resolveLandscape(preferences, 1).style;
+    const lightMiddle = decorColorForStyle(mixed, 'midground');
+    expect(brightness(lightMiddle)).toBeGreaterThan(brightness(nearest));
+    expect(lightMiddle).not.toBe(penultimate);
+    expect(decorColorForStyle(mixed, 'foreground')).toBe(front);
+    expect(mixed.layers.map(layer => layer.color)).toEqual(normal.layers.map(layer => layer.color));
+
+    preferences.custom.foreground.invertGradient = true;
+    const bothInverted = resolveLandscape(preferences, 1).style;
+    const lightFront = decorColorForStyle(bothInverted, 'foreground');
+    expect(brightness(lightFront)).toBeGreaterThan(brightness(lightMiddle));
+    expect(lightFront).not.toBe(penultimate);
+    expect(bothInverted.layers.at(-1)!.color).toBe(nearest);
     expect(preferences.custom.foreground.color).toBe('#abcdef');
     expect(preferences.custom.midground.color).toBe('#123456');
+  });
+
+  it('ajusta el número de pasos al número de capas, y no cambia fondos manuales ni estilos avanzados', () => {
+    const prefs = defaultLandscapePreferences();
+    prefs.selection = 'custom';
+    const sky = '#c2e1f4', front = '#101520';
+    prefs.custom.foreground = { ...DEFAULT_FOREGROUND, colorMode: 'gradient', enabled: true };
+    for (const count of [2, 6, 10]) {
+      prefs.mode = 'automatic';
+      prefs.custom.automatic = { skyColor: sky, frontColor: front, layerCount: count, composition: 'mixed' };
+      const automatic = resolveLandscape(prefs, 1).style;
+      expect(automatic.layers).toHaveLength(count);
+      expect(automatic.layers.at(-1)!.color)
+        .toBe(mixLandscapeColors(sky, front, count / (count + 2)));
+      const third = decorColorForStyle(automatic, 'midground');
+      // Disabled/manual third plane retains its own swatch unchanged.
+      expect(third).toBe(DEFAULT_MIDGROUND.color);
+    }
+    prefs.custom.foreground.enabled = false;
+    expect(resolveLandscape(prefs, 1).style.layers.at(-1)!.color).toBe(front);
+
+    prefs.mode = 'advanced';
+    prefs.custom.foreground.enabled = true;
+    const advanced = resolveLandscape(prefs, 1).style;
+    expect(advanced.layers.map(layer => layer.color))
+      .toEqual(prefs.custom.layers.map(layer => layer.color));
+  });
+
+  it('respeta la dirección visual oscura o clara incluso si la pareja original aumenta el brillo', () => {
+    const preferences = defaultLandscapePreferences();
+    preferences.selection = 'custom';
+    preferences.custom.automatic = {
+      skyColor: '#091522', frontColor: '#afd9f0', layerCount: 6, composition: 'mountains',
+    };
+    preferences.custom.midground = { ...DEFAULT_MIDGROUND, enabled: true, colorMode: 'gradient' };
+    preferences.custom.foreground = { ...DEFAULT_FOREGROUND, enabled: true, colorMode: 'gradient' };
+    const rgbSum = (hex: string): number =>
+      [1, 3, 5].reduce((sum, i) => sum + Number.parseInt(hex.slice(i, i + 2), 16), 0);
+    const style = resolveLandscape(preferences, 1).style;
+    const near = rgbSum(style.layers.at(-1)!.color);
+    expect(rgbSum(decorColorForStyle(style, 'midground'))).toBeLessThan(near);
+    expect(rgbSum(decorColorForStyle(style, 'foreground')))
+      .toBeLessThan(rgbSum(decorColorForStyle(style, 'midground')));
+    expect(decorColorForStyle(style, 'midground')).not.toBe(style.layers.at(-2)!.color);
+
+    preferences.custom.midground.invertGradient = true;
+    preferences.custom.foreground.invertGradient = true;
+    const inverse = resolveLandscape(preferences, 1).style;
+    expect(rgbSum(decorColorForStyle(inverse, 'midground'))).toBeGreaterThan(near);
+    expect(rgbSum(decorColorForStyle(inverse, 'foreground')))
+      .toBeGreaterThan(rgbSum(decorColorForStyle(inverse, 'midground')));
   });
 
   it('preserva colores manuales y migra paisajes anteriores al modo manual', () => {
