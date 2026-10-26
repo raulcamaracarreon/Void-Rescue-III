@@ -219,10 +219,22 @@ export function decorColorForStyle(style: LandscapeStyle, plane: 'foreground' | 
   const sameDirection = decor.invertGradient ? !backgroundGetsDarker : backgroundGetsDarker;
   const stepCount = sameDirection ? distance : distance + 0.5;
   const direction = decor.invertGradient ? 1 : -1;
+  const auto = style.automatic;
+  // For an automatically rebuilt palette, the original two user-selected
+  // endpoints are strict bounds even if rounding makes a new step overshoot.
+  // Advanced hand-painted palettes are never constrained by unrelated stops.
+  const reservedAutoPalette = Boolean(auto && style.layers.length === auto.layerCount
+    && nearest === mixLandscapeColors(auto.skyColor, auto.frontColor,
+      auto.layerCount / (auto.layerCount + 2)));
+  const selectedStart = reservedAutoPalette ? rgb(auto!.skyColor) : [0, 0, 0];
+  const selectedEnd = reservedAutoPalette ? rgb(auto!.frontColor) : [255, 255, 255];
   return '#' + near.map((component, i) => {
     const delta = Math.abs(component - prev[i]!);
     // A flat channel remains unchanged: no fictitious hue is introduced.
-    const extended = Math.max(0, Math.min(255, Math.round(component + direction * delta * stepCount)));
+    const lower = Math.min(selectedStart[i]!, selectedEnd[i]!);
+    const upper = Math.max(selectedStart[i]!, selectedEnd[i]!);
+    const extended = Math.max(lower, Math.min(upper,
+      Math.round(component + direction * delta * stepCount)));
     return extended.toString(16).padStart(2, '0');
   }).join('');
 }
