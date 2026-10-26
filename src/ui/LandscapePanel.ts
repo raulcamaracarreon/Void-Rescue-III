@@ -1,5 +1,5 @@
 import {
-  allLandscapeChoices, copyLandscape, DEFAULT_FOREGROUND, DEFAULT_MIDGROUND,
+  allLandscapeChoices, copyLandscape, decorColorForStyle, DEFAULT_FOREGROUND, DEFAULT_MIDGROUND,
   defaultLandscapePreferences, LANDSCAPE_PRESETS,
   landscapeForWave,
   resolveLandscape, sanitizeLandscapePreferences,
@@ -119,7 +119,16 @@ export class LandscapePanel {
               <option value="grille">Rejas</option>
             </select>
           </label>
-          <label>Color <input type="color" data-midground="color" aria-label="Color de tercer plano"></label>
+          <label>Modo de color
+            <select data-midground="colorMode" aria-label="Modo de color de tercer plano">
+              <option value="manual">Manual</option>
+              <option value="gradient">Gradiente automático</option>
+            </select>
+          </label>
+          <label>Invertir gradiente
+            <input type="checkbox" data-midground="invertGradient" aria-label="Invertir gradiente de tercer plano">
+          </label>
+          <label>Color / vista previa <input type="color" data-midground="color" aria-label="Color de tercer plano"></label>
           <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-midground="opacity" aria-label="Opacidad de tercer plano"></label>
           <label>Paralaje (%) <input type="number" min="40" max="100" step="1" data-midground="parallax" aria-label="Paralaje de tercer plano"></label>
         </div>
@@ -138,7 +147,16 @@ export class LandscapePanel {
               <option value="grille">Rejas</option>
             </select>
           </label>
-          <label>Color <input type="color" data-foreground="color" aria-label="Color de primer plano"></label>
+          <label>Modo de color
+            <select data-foreground="colorMode" aria-label="Modo de color de primer plano">
+              <option value="manual">Manual</option>
+              <option value="gradient">Gradiente automático</option>
+            </select>
+          </label>
+          <label>Invertir gradiente
+            <input type="checkbox" data-foreground="invertGradient" aria-label="Invertir gradiente de primer plano">
+          </label>
+          <label>Color / vista previa <input type="color" data-foreground="color" aria-label="Color de primer plano"></label>
           <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-foreground="opacity" aria-label="Opacidad de primer plano"></label>
           <label>Paralaje (%) <input type="number" min="100" max="135" step="1" data-foreground="parallax" aria-label="Paralaje de primer plano"></label>
         </div>
@@ -218,6 +236,8 @@ export class LandscapePanel {
           : (style.foreground ?? { ...DEFAULT_FOREGROUND });
         switch (key) {
           case 'enabled': decor.enabled = (input as HTMLInputElement).checked; break;
+          case 'colorMode': decor.colorMode = input.value === 'gradient' ? 'gradient' : 'manual'; break;
+          case 'invertGradient': decor.invertGradient = (input as HTMLInputElement).checked; break;
           case 'kind':
             decor.kind = input.value === 'fence' || input.value === 'grille' ? input.value : 'trees';
             break;
@@ -678,7 +698,15 @@ export class LandscapePanel {
         switch (input.dataset[plane]) {
           case 'enabled': (input as HTMLInputElement).checked = decor.enabled; break;
           case 'kind': input.value = decor.kind; break;
-          case 'color': input.value = decor.color; break;
+          case 'colorMode': input.value = decor.colorMode; break;
+          case 'invertGradient':
+            (input as HTMLInputElement).checked = decor.invertGradient;
+            input.disabled = decor.colorMode !== 'gradient';
+            break;
+          case 'color':
+            input.value = decorColorForStyle(style, plane);
+            input.disabled = decor.colorMode === 'gradient';
+            break;
           case 'opacity': input.value = String(Math.round(decor.opacity * 100)); break;
           case 'parallax': input.value = String(Math.round(decor.parallax * 100)); break;
         }
