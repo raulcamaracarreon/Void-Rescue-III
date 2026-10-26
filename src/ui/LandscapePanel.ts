@@ -130,7 +130,7 @@ export class LandscapePanel {
             <input type="checkbox" data-midground="invertGradient" aria-label="Invertir gradiente de tercer plano">
           </label>
           <label>Color / vista previa <input type="color" data-midground="color" aria-label="Color de tercer plano"></label>
-          <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-midground="opacity" aria-label="Opacidad de tercer plano"></label>
+          <label>Opacidad (%) <input type="number" min="10" max="100" step="1" data-midground="opacity" aria-label="Opacidad de tercer plano"></label>
           <label>Paralaje (%) <input type="number" min="40" max="100" step="1" data-midground="parallax" aria-label="Paralaje de tercer plano"></label>
           <label>Longitud lateral (%) <input type="number" min="5" max="100" step="5" data-midground="spanPercent" aria-label="Longitud lateral de tercer plano" title="Porcentaje del mundo circular ocupado por esta franja (100 = mundo completo)"></label>
         </div>
@@ -160,7 +160,7 @@ export class LandscapePanel {
             <input type="checkbox" data-foreground="invertGradient" aria-label="Invertir gradiente de primer plano">
           </label>
           <label>Color / vista previa <input type="color" data-foreground="color" aria-label="Color de primer plano"></label>
-          <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-foreground="opacity" aria-label="Opacidad de primer plano"></label>
+          <label>Opacidad (%) <input type="number" min="10" max="100" step="1" data-foreground="opacity" aria-label="Opacidad de primer plano"></label>
           <label>Paralaje (%) <input type="number" min="100" max="135" step="1" data-foreground="parallax" aria-label="Paralaje de primer plano"></label>
           <label>Longitud lateral (%) <input type="number" min="5" max="100" step="5" data-foreground="spanPercent" aria-label="Longitud lateral de primer plano" title="Porcentaje del mundo circular ocupado por esta franja (100 = mundo completo)"></label>
         </div>
@@ -251,7 +251,7 @@ export class LandscapePanel {
             break;
           case 'color': decor.color = input.value; break;
           case 'opacity':
-            decor.opacity = Math.max(0.1, Math.min(0.85, Number(input.value) / 100));
+            decor.opacity = Math.max(0.1, Math.min(1, Number(input.value) / 100));
             break;
           case 'parallax':
             decor.parallax = Math.max(isMiddle ? 0.4 : 1,
