@@ -2,7 +2,7 @@
 
 **Estado: fase inicial (v0.1.0, NO publicada).** Base heredada de [Void Rescue II](https://github.com/raulcamaracarreon/Void-Rescue-II), bajo licencia MIT. La versión oficial de Void Rescue II permanece independiente e inalterada.
 
-> **Aún no es el juego nuevo completo.** Se conserva la jugabilidad espacial de VR2 y se ha validado localmente el editor de rotación (16 pruebas E2E aprobadas por el usuario). En la rama `feat/foreground-layers` se implementó una **primera capa visual de primer plano** pendiente de validación: árboles, cercas y rejas con activación, color, opacidad y paralaje; sin colisiones. El dibujo manual, los helicópteros y los nuevos enemigos siguen pendientes.
+> **Aún no es el juego nuevo completo.** Se conserva la jugabilidad espacial de VR2 y se ha validado localmente el editor de rotación (16 pruebas E2E aprobadas por el usuario). La primera capa visual de primer plano (árboles, cercas y rejas) ya fue probada localmente por el usuario. En `feat/dual-decor-layers` se añade un **tercer plano** independiente entre los vehículos y las montañas/edificios. Ambos permiten activar/desactivar, escoger motivo, color, opacidad y paralaje. El dibujo manual, los helicópteros y los nuevos enemigos siguen pendientes.
 
 ## Qué funciona como base
 
@@ -12,7 +12,7 @@
 - Almacenamiento exclusivo para VR3: `void-rescue-iii.landscape.v1`, `void-rescue-iii.preferences.v1`, `void-rescue-iii.records.v1` y `void-rescue-iii.pilot.v1`.
 - Nombre, metadatos HTML y paquete npm renombrados para distinguir el prototipo.
 
-El editor de rotación ya fue probado localmente con 16 recorridos E2E aprobados. **El primer plano todavía requiere compilación, pruebas de navegador y revisión visual local.** No hay publicación de VR3 en Pages ni lanzamiento oficial.
+El editor de rotación ya fue probado localmente con 16 recorridos E2E aprobados. **La rama de dos planos todavía requiere compilación, pruebas de navegador y revisión visual local.** No hay publicación de VR3 en Pages ni lanzamiento oficial.
 
 ## Ejecución local
 
@@ -45,4 +45,4 @@ No se sustituirán el núcleo de simulación, la física ni las reglas probadas 
 
 **Automatizaciones:** los workflows de validación y Pages quedan manuales durante la etapa de prototipo; el workflow de releases exclusivo de VR2 no se incluye. No crear tags de versión VR2 desde esta rama.
 
-**Repositorio independiente creado:** [Void-Rescue-III](https://github.com/raulcamaracarreon/Void-Rescue-III). Los cambios de primer plano se desarrollan en `feat/foreground-layers`, sin alterar `main` hasta su validación. El remoto `vr2-base` es sólo una referencia histórica.
+**Repositorio independiente creado:** [Void-Rescue-III](https://github.com/raulcamaracarreon/Void-Rescue-III). La rama `feat/dual-decor-layers` parte de `feat/foreground-layers`; ambas se mantienen separadas de `main` hasta validación. El remoto `vr2-base` es sólo una referencia histórica.
