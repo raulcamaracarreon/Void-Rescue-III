@@ -4,7 +4,7 @@ import {
   copyLandscape, decorColorForStyle, DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences,
   mixLandscapeColors, resolveLandscape, sanitizeForeground, sanitizeMidground, sanitizeLandscapePreferences,
 } from '../../src/landscape/LandscapeConfig';
-import { ForegroundDecor, FOREGROUND_DEPTH, MIDGROUND_DEPTH } from '../../src/render/ForegroundDecor';
+import { ForegroundDecor, FOREGROUND_DEPTH, MIDGROUND_DEPTH, decorSpanWidth } from '../../src/render/ForegroundDecor';
 import { CONFIG } from '../../src/game/config';
 
 describe('primer plano decorativo opcional', () => {
@@ -178,8 +178,72 @@ describe('primer plano decorativo opcional', () => {
     front.dispose();
   });
 
+
+  it('conserva compatibilidad con franjas antiguas y valida edificios y longitud', () => {
+    const old = {
+      ...DEFAULT_FOREGROUND, enabled: true, color: '#334455',
+      kind: 'fence' as const, spanPercent: undefined,
+    };
+    const restored = sanitizeForeground(JSON.parse(JSON.stringify(old)));
+    expect(restored.kind).toBe('fence');
+    expect(restored.color).toBe('#334455');
+    expect(restored.spanPercent).toBe(100);
+    expect(sanitizeForeground({ kind: 'buildings', spanPercent: 25 }))
+      .toMatchObject({ kind: 'buildings', spanPercent: 25 });
+    expect(sanitizeMidground({ kind: 'buildings', spanPercent: 65 }))
+      .toMatchObject({ kind: 'buildings', spanPercent: 65 });
+    expect(sanitizeMidground({ spanPercent: -1 }).spanPercent).toBe(5);
+    expect(sanitizeForeground({ spanPercent: 400 }).spanPercent).toBe(100);
+    expect(sanitizeForeground({ spanPercent: Infinity }).spanPercent).toBe(100);
+    expect(sanitizeForeground({ spanPercent: 24.6 }).spanPercent).toBe(25);
+  });
+
+  it('genera geometría truncada y repetible sin estirar motivos al acortar la franja', () => {
+    expect(decorSpanWidth(100)).toBe(CONFIG.worldWidth);
+    expect(decorSpanWidth(25)).toBe(CONFIG.worldWidth * 0.25);
+    for (const kind of ['trees', 'fence', 'grille', 'buildings'] as const) {
+      const full = new ForegroundDecor();
+      const short = new ForegroundDecor();
+      const repeated = new ForegroundDecor();
+      const settings = { ...DEFAULT_FOREGROUND, enabled: true, kind };
+      full.rebuild({ ...settings, spanPercent: 100 }, 8042, 77, 3);
+      short.rebuild({ ...settings, spanPercent: 25 }, 8042, 77, 3);
+      repeated.rebuild({ ...settings, spanPercent: 25 }, 8042, 77, 3);
+      const fullPos = (full.group.children[1] as Mesh).geometry.getAttribute('position');
+      const shortPos = (short.group.children[1] as Mesh).geometry.getAttribute('position');
+      const repeatedPos = (repeated.group.children[1] as Mesh).geometry.getAttribute('position');
+      expect(shortPos.count).toBeLessThan(fullPos.count);
+      expect(shortPos.array).toEqual(repeatedPos.array);
+      expect(Math.max(...Array.from({ length: shortPos.count }, (_, i) => shortPos.getX(i))))
+        .toBeLessThanOrEqual(decorSpanWidth(25) + 0.001);
+      // Buildings use rectilinear footprints and varied heights, not a scaled bitmap.
+      expect(Math.max(...Array.from({ length: shortPos.count }, (_, i) => shortPos.getY(i))))
+        .toBeGreaterThan(15);
+      full.dispose(); short.dispose(); repeated.dispose();
+    }
+  });
+
+  it('guarda anchos distintos por plano sin mezclarlos con el gradiente', () => {
+    const prefs = defaultLandscapePreferences();
+    prefs.selection = 'custom';
+    prefs.custom.foreground = {
+      ...DEFAULT_FOREGROUND, enabled: true, kind: 'buildings', spanPercent: 30,
+      colorMode: 'gradient', invertGradient: true,
+    };
+    prefs.custom.midground = {
+      ...DEFAULT_MIDGROUND, enabled: true, kind: 'trees', spanPercent: 70,
+      colorMode: 'manual',
+    };
+    const cleaned = sanitizeLandscapePreferences(JSON.parse(JSON.stringify(prefs)));
+    expect(cleaned.custom.foreground).toEqual(prefs.custom.foreground);
+    expect(cleaned.custom.midground).toEqual(prefs.custom.midground);
+    cleaned.custom.foreground!.spanPercent = 15;
+    expect(cleaned.custom.midground!.spanPercent).toBe(70);
+    expect(prefs.custom.foreground.spanPercent).toBe(30);
+  });
+
   it('genera motivos repetibles sin dependencias del sistema de colisiones', () => {
-    for (const kind of ['trees', 'fence', 'grille'] as const) {
+    for (const kind of ['trees', 'fence', 'grille', 'buildings'] as const) {
       const a = new ForegroundDecor(), b = new ForegroundDecor();
       const config = { ...DEFAULT_FOREGROUND, enabled: true, kind };
       a.rebuild(config, 8042, 6, 3);
