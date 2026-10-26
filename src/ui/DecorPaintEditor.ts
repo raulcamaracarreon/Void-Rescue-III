@@ -133,6 +133,9 @@ export class DecorPaintEditor {
     this.canvas.focus({ preventScroll: true });
   }
 
+  get open(): boolean { return this.dialog.open; }
+  dismiss(): void { this.close(); }
+
   private close(): void {
     if (this.dialog.open) this.dialog.close();
     this.onApply = null;
