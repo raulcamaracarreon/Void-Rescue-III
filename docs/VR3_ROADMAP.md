@@ -22,11 +22,12 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] Implementado: vista previa cromática al cambiar entre modos, conservando el color manual.
 - [x] Implementado: persistencia y saneamiento sin sobrescribir la configuración anterior; archivos antiguos mantienen modo manual.
 - [x] Añadidas pruebas unitarias y E2E para inversión, independencia y recarga.
-- [ ] Ejecutar `npm run build`, `npm run test` y Playwright en la computadora del usuario; confirmar visualmente normal/inverso.
+- [x] Revisión en rama `feat/phase3-paint-editor`: reconstruir paleta en `N+2` pasos para producir dos tonos nuevos más allá del último fondo y corregir repeticiones del penúltimo color en modo inverso. Pruebas unitarias y aserciones de swatches actualizadas.
+- [ ] Ejecutar `npm run build`, `npm run test` y Playwright en la computadora del usuario; confirmar visualmente el gradiente continuado en modo normal e inverso.
 - [ ] Revisar efecto al cambiar los dos colores originales, restauración de color manual y configuración guardada.
 - [ ] Fusionar solamente cuando todo esté validado; **no usar GitHub Actions** por defecto.
 
-**Regla cromática inicial:** se toman colores de la misma interpolación RGB de `AutomaticLandscape.skyColor` → `frontColor`. El tercer plano toma una muestra al 75 % y el primero al 95 %. El modo inverso usa la posición complementaria (25 % y 5 %, respectivamente), permitiendo probar contrastes entre capas. No se agrega un control avanzado de intensidad en esta fase.
+**Regla cromática inicial (superada por la revisión posterior):** la versión anterior tomaba muestras fijas dentro del gradiente (75 % y 95 %), provocando duplicación o ausencia de continuidad cromática. **Regla actual en `feat/phase3-paint-editor`:** el gradiente automático se reconstruye con `N + 2` pasos cuando alguna de las dos capas decorativas utiliza color automático. Se destinan `N` a montañas/edificios y dos tonos posteriores a tercer/primer plano. El tono normal siempre se oscurece hacia delante y el inverso se aclara de forma independiente; si la dirección contradice la pendiente cromática del fondo, se usan pasos fraccionarios para no igualar el color de la penúltima capa. La paleta se mantiene dentro de los dos colores seleccionados; los estilos avanzados y manuales no se recalculan. Si ambos colores elegidos son iguales, matemáticamente no hay gradiente que extender.
 
 **Después de esta fase 0:** cerrar la fase 2 con (1) motivo **edificios** y (2) longitud lateral configurable en ambos planos, desarrollados en `feat/decor-buildings-and-span` y todavía pendientes de verificación local. Solo iniciar la fase 3 de dibujo manual tipo Paint simplificado cuando el usuario valide ambos incrementos.
 
