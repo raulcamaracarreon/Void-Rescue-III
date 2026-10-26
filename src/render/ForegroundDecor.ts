@@ -1,7 +1,7 @@
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshBasicNodeMaterial } from 'three/webgpu';
 import { Random } from '../core/Random';
 import { CONFIG } from '../game/config';
-import { blankDecorBitmap, DECOR_BITMAP_HEIGHT, DECOR_BITMAP_WIDTH } from '../landscape/LandscapeConfig';
+import { blankDecorBitmap, sanitizeDecorBitmap } from '../landscape/LandscapeConfig';
 import type { DecorBitmap, ForegroundConfig, ForegroundKind } from '../landscape/LandscapeConfig';
 
 /** Z-axis ordering in the orthographic camera: mountains < middle < vehicle < front. */
@@ -15,8 +15,47 @@ export function decorSpanWidth(spanPercent: number): number {
   return CONFIG.worldWidth * Math.max(5, Math.min(100, spanPercent)) / 100;
 }
 
-function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number,
-  spanPercent: number, bitmap?: DecorBitmap): BufferGeometry {
+/** A bitmap is a motif (not an entire landscape): 50 world units high.
+ * With a locked 3:1 aspect ratio each motif is exactly 150 world units wide.
+ */
+export function drawingMotifWidth(bitmap: DecorBitmap): number {
+  return bitmap.width * 50 / bitmap.height;
+}
+
+/** Build the motif ONCE, sharing geometry across wrapped worlds and repeats.
+ * The last tile may be cropped at spanWidth; never scale a motif horizontally.
+ */
+function makeDrawingGeometry(bitmap: DecorBitmap, depth: number, widthLimit: number): BufferGeometry {
+  const pixels = sanitizeDecorBitmap(bitmap);
+  const cell = 50 / pixels.height;
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  for (let row = 0; row < pixels.height; row++) {
+    const line = pixels.rows[row]!;
+    const y = 5 + (pixels.height - row - 1) * cell;
+    let column = 0;
+    while (column * cell < widthLimit && column < pixels.width) {
+      if (line[column] !== '1') { column++; continue; }
+      const start = column;
+      while (column < pixels.width && line[column] === '1' && column * cell < widthLimit) column++;
+      const x = start * cell;
+      const width = Math.min(column * cell, widthLimit) - x;
+      if (width <= 0) continue;
+      const i = vertices.length / 3;
+      vertices.push(x, y, depth, x + width, y, depth,
+        x + width, y + cell, depth, x, y + cell, depth);
+      indices.push(i, i + 1, i + 2, i, i + 2, i + 3);
+    }
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function makeSilhouettes(kind: Exclude<ForegroundKind, 'drawing'>, seed: number, depth: number,
+  spanPercent: number): BufferGeometry {
   const vertices: number[] = [];
   const indices: number[] = [];
   const spanWidth = decorSpanWidth(spanPercent);
@@ -30,22 +69,7 @@ function makeSilhouettes(kind: ForegroundKind, seed: number, depth: number,
     vertices.push(x - halfWidth, y, depth, x + halfWidth, y, depth, x, y + height, depth);
     indices.push(i, i + 1, i + 2);
   };
-  if (kind === 'drawing') {
-    const mask = bitmap ?? blankDecorBitmap();
-    const cellWidth = spanWidth / DECOR_BITMAP_WIDTH;
-    const cellHeight = 50 / DECOR_BITMAP_HEIGHT;
-    for (let row = 0; row < DECOR_BITMAP_HEIGHT; row++) {
-      const line = mask.rows[row]!;
-      let column = 0;
-      while (column < DECOR_BITMAP_WIDTH) {
-        if (line[column] !== '1') { column++; continue; }
-        const start = column;
-        while (column < DECOR_BITMAP_WIDTH && line[column] === '1') column++;
-        const y = 5 + (DECOR_BITMAP_HEIGHT - row - 1) * cellHeight;
-        rect(start * cellWidth, y, (column - start) * cellWidth, cellHeight);
-      }
-    }
-  } else if (kind === 'trees') {
+  if (kind === 'trees') {
     const random = new Random(seed >>> 0);
     // Keep the original average spacing instead of stretching trees to fit the strip.
     const count = Math.max(1, Math.floor(spanWidth / 75));
@@ -101,7 +125,8 @@ export class ForegroundDecor {
   readonly group = new Group();
   private geometry: BufferGeometry | null = null;
   private material: MeshBasicNodeMaterial | null = null;
-  private readonly copies: Mesh[] = [];
+  private partialGeometry: BufferGeometry | null = null;
+  private readonly copies: (Mesh | Group)[] = [];
   private parallax = 1;
 
   constructor(private readonly depth = FOREGROUND_DEPTH, private readonly seedOffset = 0) {}
@@ -110,20 +135,45 @@ export class ForegroundDecor {
     this.dispose();
     if (!config.enabled) return;
     const seed = (gameSeed ^ styleSeed ^ this.seedOffset ^ Math.imul(wave, 0x9e3779b9)) >>> 0;
-    this.geometry = makeSilhouettes(config.kind, seed, this.depth, config.spanPercent, config.bitmap);
+    const drawing = config.kind === 'drawing';
+    const mask = drawing ? sanitizeDecorBitmap(config.bitmap ?? blankDecorBitmap()) : null;
+    const width = mask ? drawingMotifWidth(mask) : 0;
+    const span = decorSpanWidth(config.spanPercent);
+    this.geometry = mask
+      ? makeDrawingGeometry(mask, this.depth, width)
+      : makeSilhouettes(config.kind as Exclude<ForegroundKind, 'drawing'>,
+        seed, this.depth, config.spanPercent);
     this.material = new MeshBasicNodeMaterial({
       color: Number.parseInt(config.color.slice(1), 16),
       opacity: config.opacity, transparent: true, depthWrite: false, toneMapped: false,
     });
     this.parallax = config.parallax;
+    const repetitions = mask ? Math.ceil(span / width) : 0;
+    const remainder = mask ? span - (repetitions - 1) * width : 0;
+    if (mask && remainder < width - 0.000001)
+      this.partialGeometry = makeDrawingGeometry(mask, this.depth, remainder);
     for (let i = 0; i < 3; i++) {
-      const mesh = new Mesh(this.geometry, this.material);
-      mesh.frustumCulled = false;
-      // Transparency order: middle behind visual effects, front over visual effects.
-      // Opaque vehicles still draw first and occlude the middle through depth testing.
-      mesh.renderOrder = this.depth > 0 ? 1 : -1;
-      this.copies.push(mesh);
-      this.group.add(mesh);
+      if (mask) {
+        const copy = new Group();
+        for (let tile = 0; tile < repetitions; tile++) {
+          const cropped = tile === repetitions - 1 && this.partialGeometry;
+          const mesh = new Mesh(cropped ? this.partialGeometry! : this.geometry, this.material);
+          mesh.position.x = tile * width;
+          // Geometry is shared for every repeat; only the final tile is cropped.
+          // Let the renderer cull offscreen repeated motifs for better performance.
+          mesh.renderOrder = this.depth > 0 ? 1 : -1;
+          copy.add(mesh);
+        }
+        this.copies.push(copy);
+        this.group.add(copy);
+      } else {
+        const mesh = new Mesh(this.geometry, this.material);
+        mesh.frustumCulled = false;
+        // Opaque vehicles still occlude the middle through depth testing.
+        mesh.renderOrder = this.depth > 0 ? 1 : -1;
+        this.copies.push(mesh);
+        this.group.add(mesh);
+      }
     }
   }
 
@@ -140,8 +190,10 @@ export class ForegroundDecor {
     this.group.clear();
     this.copies.length = 0;
     this.geometry?.dispose();
+    this.partialGeometry?.dispose();
     this.material?.dispose();
     this.geometry = null;
+    this.partialGeometry = null;
     this.material = null;
   }
 }
