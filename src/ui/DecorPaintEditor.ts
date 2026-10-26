@@ -1,8 +1,8 @@
 import {
-  blankDecorBitmap, DECOR_BITMAP_HEIGHT, DECOR_BITMAP_WIDTH, sanitizeDecorBitmap,
+  blankDecorBitmap, sanitizeDecorBitmap,
 } from '../landscape/LandscapeConfig';
 import type { DecorBitmap } from '../landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels } from '../landscape/DecorDrawing';
+import { decorInkCount, drawDecorPixels, resizeDecorBitmap } from '../landscape/DecorDrawing';
 import type { DecorDrawTool, PixelPoint } from '../landscape/DecorDrawing';
 
 /** Small self-contained raster editor. Editing the draft does not mutate saved styles
@@ -12,6 +12,7 @@ export class DecorPaintEditor {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly tool: HTMLSelectElement;
+  private readonly resolution: HTMLSelectElement;
   private readonly status: HTMLElement;
   private bitmap: DecorBitmap = blankDecorBitmap();
   private undo: DecorBitmap[] = [];
@@ -28,8 +29,16 @@ export class DecorPaintEditor {
     this.dialog.setAttribute('aria-label', 'Editor de dibujo de plano');
     this.dialog.innerHTML = `
       <h2 class="decor-paint-title">Editor de siluetas</h2>
-      <p class="landscape-help">Pinta una máscara de un color: los cuadros claros se mostrarán con el color y la opacidad del plano. El ancho del dibujo se adapta a la longitud lateral configurada. Sin colisiones.</p>
+      <p class="landscape-help">Dibuja un motivo de silueta. Su tamaño y proporción se conservan: el juego lo repite dentro de la longitud lateral del plano, sin estirarlo ni generar colisiones.</p>
       <div class="decor-paint-toolbar">
+        <label>Resolución del lienzo
+          <select class="decor-paint-resolution" aria-label="Resolución del lienzo">
+            <option value="96">96 × 32 (baja)</option>
+            <option value="192">192 × 64 (media)</option>
+            <option value="288">288 × 96 (inicial)</option>
+            <option value="384">384 × 128 (alta)</option>
+          </select>
+        </label>
         <label>Herramienta
           <select class="decor-paint-tool" aria-label="Herramienta de dibujo">
             <option value="brush">Pincel</option>
@@ -53,6 +62,20 @@ export class DecorPaintEditor {
     this.canvas = this.dialog.querySelector<HTMLCanvasElement>('canvas')!;
     this.ctx = this.canvas.getContext('2d', { alpha: false })!;
     this.tool = this.dialog.querySelector<HTMLSelectElement>('.decor-paint-tool')!;
+    this.resolution = this.dialog.querySelector<HTMLSelectElement>('.decor-paint-resolution')!;
+    this.resolution.addEventListener('change', () => {
+      if (this.pointer !== null) {
+        this.resolution.value = String(this.bitmap.width);
+        return;
+      }
+      const requested = Number(this.resolution.value);
+      if (requested === this.bitmap.width) return;
+      this.undo.push(sanitizeDecorBitmap(this.bitmap));
+      if (this.undo.length > 30) this.undo.shift();
+      this.redo = [];
+      this.bitmap = resizeDecorBitmap(this.bitmap, requested);
+      this.paint();
+    });
     this.status = this.dialog.querySelector<HTMLElement>('.decor-paint-status')!;
 
     this.canvas.addEventListener('pointerdown', event => {
@@ -99,7 +122,7 @@ export class DecorPaintEditor {
       this.undo.push(sanitizeDecorBitmap(this.bitmap));
       if (this.undo.length > 30) this.undo.shift();
       this.redo = [];
-      this.bitmap = blankDecorBitmap();
+      this.bitmap = blankDecorBitmap(this.bitmap.width);
       this.paint();
     });
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="apply"]')!.addEventListener('click', () => {
@@ -126,6 +149,7 @@ export class DecorPaintEditor {
     this.undo = []; this.redo = []; this.pointer = null; this.snapshot = null;
     this.onApply = apply;
     this.tool.value = 'brush';
+    this.resolution.value = String(this.bitmap.width);
     this.dialog.querySelector<HTMLElement>('.decor-paint-title')!.textContent =
       `Dibujar ${planeLabel}`;
     this.paint();
@@ -144,10 +168,10 @@ export class DecorPaintEditor {
   private point(event: PointerEvent): PixelPoint {
     const rect = this.canvas.getBoundingClientRect();
     return {
-      x: Math.max(0, Math.min(DECOR_BITMAP_WIDTH - 1,
-        Math.floor((event.clientX - rect.left) / rect.width * DECOR_BITMAP_WIDTH))),
-      y: Math.max(0, Math.min(DECOR_BITMAP_HEIGHT - 1,
-        Math.floor((event.clientY - rect.top) / rect.height * DECOR_BITMAP_HEIGHT))),
+      x: Math.max(0, Math.min(this.bitmap.width - 1,
+        Math.floor((event.clientX - rect.left) / rect.width * this.bitmap.width))),
+      y: Math.max(0, Math.min(this.bitmap.height - 1,
+        Math.floor((event.clientY - rect.top) / rect.height * this.bitmap.height))),
     };
   }
 
@@ -180,30 +204,31 @@ export class DecorPaintEditor {
   }
 
   private paint(): void {
-    const stepX = this.canvas.width / DECOR_BITMAP_WIDTH;
-    const stepY = this.canvas.height / DECOR_BITMAP_HEIGHT;
+    this.resolution.value = String(this.bitmap.width);
+    const stepX = this.canvas.width / this.bitmap.width;
+    const stepY = this.canvas.height / this.bitmap.height;
     this.ctx.fillStyle = '#082024';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.fillStyle = '#a4f5d6';
-    for (let y = 0; y < DECOR_BITMAP_HEIGHT; y++) {
+    for (let y = 0; y < this.bitmap.height; y++) {
       const row = this.bitmap.rows[y]!;
-      for (let x = 0; x < DECOR_BITMAP_WIDTH; x++) {
+      for (let x = 0; x < this.bitmap.width; x++) {
         if (row[x] === '1') this.ctx.fillRect(x * stepX, y * stepY, stepX, stepY);
       }
     }
     this.ctx.strokeStyle = '#43706b50';
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
-    for (let x = 0; x <= DECOR_BITMAP_WIDTH; x += 4) {
+    for (let x = 0; x <= this.bitmap.width; x += Math.max(4, this.bitmap.width / 24)) {
       this.ctx.moveTo(x * stepX + 0.5, 0);
       this.ctx.lineTo(x * stepX + 0.5, this.canvas.height);
     }
-    for (let y = 0; y <= DECOR_BITMAP_HEIGHT; y += 4) {
+    for (let y = 0; y <= this.bitmap.height; y += Math.max(4, this.bitmap.height / 8)) {
       this.ctx.moveTo(0, y * stepY + 0.5);
       this.ctx.lineTo(this.canvas.width, y * stepY + 0.5);
     }
     this.ctx.stroke();
-    this.status.textContent = `${DECOR_BITMAP_WIDTH} × ${DECOR_BITMAP_HEIGHT} píxeles · ${decorInkCount(this.bitmap)} pintados · ${this.undo.length} pasos para deshacer`;
+    this.status.textContent = `${this.bitmap.width} × ${this.bitmap.height} píxeles · ${decorInkCount(this.bitmap)} pintados · ${this.undo.length} pasos para deshacer`;
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="undo"]')!.disabled = !this.undo.length;
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="redo"]')!.disabled = !this.redo.length;
   }
