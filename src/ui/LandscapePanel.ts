@@ -1,5 +1,5 @@
 import {
-  allLandscapeChoices, copyLandscape, defaultLandscapePreferences, LANDSCAPE_PRESETS,
+  allLandscapeChoices, copyLandscape, DEFAULT_FOREGROUND, defaultLandscapePreferences, LANDSCAPE_PRESETS,
   landscapeForWave,
   resolveLandscape, sanitizeLandscapePreferences,
 } from '../landscape/LandscapeConfig';
@@ -104,6 +104,25 @@ export class LandscapePanel {
           <button type="button" data-landscape="remove">− Capa</button>
         </div>
       </div>
+      <section class="landscape-foreground" aria-label="Elementos de primer plano">
+        <h3>Primer plano · elementos decorativos</h3>
+        <p class="landscape-help">Opcional. Las siluetas pasan delante de la nave y no provocan colisiones. Para conservar los cambios en un ambiente, utiliza Guardar nuevo o Guardar cambios en Mis paisajes.</p>
+        <div class="landscape-foreground-controls">
+          <label class="landscape-foreground-toggle">Activar primer plano
+            <input type="checkbox" data-foreground="enabled" aria-label="Activar primer plano">
+          </label>
+          <label>Motivo
+            <select data-foreground="kind" aria-label="Motivo de primer plano">
+              <option value="trees">Árboles</option>
+              <option value="fence">Cercas</option>
+              <option value="grille">Rejas</option>
+            </select>
+          </label>
+          <label>Color <input type="color" data-foreground="color" aria-label="Color de primer plano"></label>
+          <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-foreground="opacity" aria-label="Opacidad de primer plano"></label>
+          <label>Paralaje (%) <input type="number" min="100" max="135" step="1" data-foreground="parallax" aria-label="Paralaje de primer plano"></label>
+        </div>
+      </section>
       <div class="landscape-common">
         <label>Estrellas <input type="checkbox" data-common="stars" aria-label="Mostrar estrellas"></label>
         <label>Luna <input type="checkbox" data-common="moon" aria-label="Mostrar luna"></label>
@@ -167,6 +186,28 @@ export class LandscapePanel {
         else if (key === 'moon') style.moon = input.checked;
         else if (key === 'seed') style.seed = Math.max(0, Math.min(999999999, Math.round(Number(input.value) || 0)));
         this.commit();
+      });
+    }
+    for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-foreground]')) {
+      input.addEventListener('change', () => {
+        const style = this.mutableStyle();
+        const foreground = style.foreground ?? { ...DEFAULT_FOREGROUND };
+        switch (input.dataset.foreground) {
+          case 'enabled': foreground.enabled = (input as HTMLInputElement).checked; break;
+          case 'kind':
+            foreground.kind = input.value === 'fence' || input.value === 'grille' ? input.value : 'trees';
+            break;
+          case 'color': foreground.color = input.value; break;
+          case 'opacity':
+            foreground.opacity = Math.max(0.1, Math.min(0.85, Number(input.value) / 100));
+            break;
+          case 'parallax':
+            foreground.parallax = Math.max(1, Math.min(1.35, Number(input.value) / 100));
+            break;
+        }
+        style.foreground = foreground;
+        this.commit();
+        this.render();
       });
     }
     this.layers.addEventListener('change', event => {
@@ -603,6 +644,16 @@ export class LandscapePanel {
       input.value = String(automatic[key]);
     }
     this.paintSwatches();
+    const foreground = style.foreground ?? DEFAULT_FOREGROUND;
+    for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-foreground]')) {
+      switch (input.dataset.foreground) {
+        case 'enabled': (input as HTMLInputElement).checked = foreground.enabled; break;
+        case 'kind': input.value = foreground.kind; break;
+        case 'color': input.value = foreground.color; break;
+        case 'opacity': input.value = String(Math.round(foreground.opacity * 100)); break;
+        case 'parallax': input.value = String(Math.round(foreground.parallax * 100)); break;
+      }
+    }
     for (const input of this.dialog.querySelectorAll<HTMLInputElement>('[data-sky]')) {
       const key = input.dataset.sky;
       if (key === 'skyTop') input.value = style.skyTop;
