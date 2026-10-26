@@ -23,7 +23,8 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] Implementado: persistencia y saneamiento sin sobrescribir la configuración anterior; archivos antiguos mantienen modo manual.
 - [x] Añadidas pruebas unitarias y E2E para inversión, independencia y recarga.
 - [x] Revisión en rama `feat/phase3-paint-editor`: reconstruir paleta en `N+2` pasos para producir dos tonos nuevos más allá del último fondo y corregir repeticiones del penúltimo color en modo inverso. Pruebas unitarias y aserciones de swatches actualizadas.
-- [ ] Ejecutar `npm run build`, `npm run test` y Playwright en la computadora del usuario; confirmar visualmente el gradiente continuado en modo normal e inverso.
+- [x] **Pruebas locales reportadas por el usuario (25/10/2026):** 14 suites / 129 pruebas unitarias aprobadas (`npm run test`) y 12/12 E2E de `tests/e2e/foreground.spec.ts` aprobadas en `chromium-auto` y `chromium-webgl2`, incluidas persistencia, gradiente normal/inverso, edificios y longitud lateral.
+- [ ] Confirmar compilación `npm run build` y contraste visual real del gradiente continuado durante el vuelo; las pruebas E2E de `tests/e2e/decor-paint.spec.ts` no se incluyeron en ese último resultado.
 - [ ] Revisar efecto al cambiar los dos colores originales, restauración de color manual y configuración guardada.
 - [ ] Fusionar solamente cuando todo esté validado; **no usar GitHub Actions** por defecto.
 
