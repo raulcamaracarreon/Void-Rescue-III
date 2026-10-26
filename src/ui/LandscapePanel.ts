@@ -1,5 +1,6 @@
 import {
-  allLandscapeChoices, copyLandscape, DEFAULT_FOREGROUND, defaultLandscapePreferences, LANDSCAPE_PRESETS,
+  allLandscapeChoices, copyLandscape, DEFAULT_FOREGROUND, DEFAULT_MIDGROUND,
+  defaultLandscapePreferences, LANDSCAPE_PRESETS,
   landscapeForWave,
   resolveLandscape, sanitizeLandscapePreferences,
 } from '../landscape/LandscapeConfig';
@@ -104,6 +105,25 @@ export class LandscapePanel {
           <button type="button" data-landscape="remove">− Capa</button>
         </div>
       </div>
+      <section class="landscape-foreground" aria-label="Elementos de tercer plano">
+        <h3>Tercer plano · detrás de vehículos</h3>
+        <p class="landscape-help">Elementos opcionales entre los vehículos y los fondos de montañas o edificios. Se editan por separado del primer plano y no tienen colisiones.</p>
+        <div class="landscape-foreground-controls">
+          <label class="landscape-foreground-toggle">Activar tercer plano
+            <input type="checkbox" data-midground="enabled" aria-label="Activar tercer plano">
+          </label>
+          <label>Motivo
+            <select data-midground="kind" aria-label="Motivo de tercer plano">
+              <option value="trees">Árboles</option>
+              <option value="fence">Cercas</option>
+              <option value="grille">Rejas</option>
+            </select>
+          </label>
+          <label>Color <input type="color" data-midground="color" aria-label="Color de tercer plano"></label>
+          <label>Opacidad (%) <input type="number" min="10" max="85" step="1" data-midground="opacity" aria-label="Opacidad de tercer plano"></label>
+          <label>Paralaje (%) <input type="number" min="40" max="100" step="1" data-midground="parallax" aria-label="Paralaje de tercer plano"></label>
+        </div>
+      </section>
       <section class="landscape-foreground" aria-label="Elementos de primer plano">
         <h3>Primer plano · elementos decorativos</h3>
         <p class="landscape-help">Opcional. Las siluetas pasan delante de la nave y no provocan colisiones. Para conservar los cambios en un ambiente, utiliza Guardar nuevo o Guardar cambios en Mis paisajes.</p>
@@ -188,24 +208,30 @@ export class LandscapePanel {
         this.commit();
       });
     }
-    for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-foreground]')) {
+    for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-foreground], [data-midground]')) {
       input.addEventListener('change', () => {
         const style = this.mutableStyle();
-        const foreground = style.foreground ?? { ...DEFAULT_FOREGROUND };
-        switch (input.dataset.foreground) {
-          case 'enabled': foreground.enabled = (input as HTMLInputElement).checked; break;
+        const isMiddle = input.hasAttribute('data-midground');
+        const key = isMiddle ? input.dataset.midground : input.dataset.foreground;
+        const decor = isMiddle
+          ? (style.midground ?? { ...DEFAULT_MIDGROUND })
+          : (style.foreground ?? { ...DEFAULT_FOREGROUND });
+        switch (key) {
+          case 'enabled': decor.enabled = (input as HTMLInputElement).checked; break;
           case 'kind':
-            foreground.kind = input.value === 'fence' || input.value === 'grille' ? input.value : 'trees';
+            decor.kind = input.value === 'fence' || input.value === 'grille' ? input.value : 'trees';
             break;
-          case 'color': foreground.color = input.value; break;
+          case 'color': decor.color = input.value; break;
           case 'opacity':
-            foreground.opacity = Math.max(0.1, Math.min(0.85, Number(input.value) / 100));
+            decor.opacity = Math.max(0.1, Math.min(0.85, Number(input.value) / 100));
             break;
           case 'parallax':
-            foreground.parallax = Math.max(1, Math.min(1.35, Number(input.value) / 100));
+            decor.parallax = Math.max(isMiddle ? 0.4 : 1,
+              Math.min(isMiddle ? 1 : 1.35, Number(input.value) / 100));
             break;
         }
-        style.foreground = foreground;
+        if (isMiddle) style.midground = decor;
+        else style.foreground = decor;
         this.commit();
         this.render();
       });
@@ -644,14 +670,18 @@ export class LandscapePanel {
       input.value = String(automatic[key]);
     }
     this.paintSwatches();
-    const foreground = style.foreground ?? DEFAULT_FOREGROUND;
-    for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-foreground]')) {
-      switch (input.dataset.foreground) {
-        case 'enabled': (input as HTMLInputElement).checked = foreground.enabled; break;
-        case 'kind': input.value = foreground.kind; break;
-        case 'color': input.value = foreground.color; break;
-        case 'opacity': input.value = String(Math.round(foreground.opacity * 100)); break;
-        case 'parallax': input.value = String(Math.round(foreground.parallax * 100)); break;
+    for (const [plane, decor] of [
+      ['foreground', style.foreground ?? DEFAULT_FOREGROUND],
+      ['midground', style.midground ?? DEFAULT_MIDGROUND],
+    ] as const) {
+      for (const input of this.dialog.querySelectorAll<HTMLInputElement | HTMLSelectElement>(`[data-${plane}]`)) {
+        switch (input.dataset[plane]) {
+          case 'enabled': (input as HTMLInputElement).checked = decor.enabled; break;
+          case 'kind': input.value = decor.kind; break;
+          case 'color': input.value = decor.color; break;
+          case 'opacity': input.value = String(Math.round(decor.opacity * 100)); break;
+          case 'parallax': input.value = String(Math.round(decor.parallax * 100)); break;
+        }
       }
     }
     for (const input of this.dialog.querySelectorAll<HTMLInputElement>('[data-sky]')) {
