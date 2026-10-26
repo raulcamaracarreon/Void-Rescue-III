@@ -20,8 +20,7 @@ test('permite opacidad al 100 % y edita dibujos diferentes en ambos planos', asy
   await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
 
   let editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
-  const canvas = editor.getByRole('img', { name: 'Lienzo de dibujo de silueta' })
-    .or(editor.locator('canvas')).first();
+  const canvas = editor.locator('canvas');
   const bounds = await canvas.boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width * .12, bounds!.y + bounds!.height * .35);
