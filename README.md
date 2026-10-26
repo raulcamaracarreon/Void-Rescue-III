@@ -4,6 +4,12 @@
 
 > **Aún no es el juego nuevo completo.** Se conserva la jugabilidad espacial de VR2 y se ha validado localmente el editor de rotación (16 pruebas E2E aprobadas por el usuario). La primera capa visual de primer plano (árboles, cercas y rejas) ya fue probada localmente por el usuario. En `feat/dual-decor-layers` se añade un **tercer plano** independiente entre los vehículos y las montañas/edificios. Ambos permiten activar/desactivar, escoger motivo, color, opacidad y paralaje. El dibujo manual, los helicópteros y los nuevos enemigos siguen pendientes.
 
+## Fase 0 prioritaria: color automático e inversión de gradiente
+
+Desarrollo en [`feat/decor-auto-gradient`](https://github.com/raulcamaracarreon/Void-Rescue-III/tree/feat/decor-auto-gradient), **pendiente de compilación y pruebas locales**. Ambos planos decorativos ofrecen color manual o color derivado del gradiente automático de dos extremos, con inversión independiente por plano. El color manual se conserva al alternar; la franja de vista previa incluye los planos habilitados y se actualiza al modificar la paleta. No se altera la simulación ni el gradiente de las montañas/edificios de fondo.
+
+**Orden de trabajo:** validar fase 0; terminar pendientes de fase 2 (**edificios** y **longitud lateral**); iniciar fase 3 (editor de siluetas y dibujo manual). No ampliar alcance fuera de esta secuencia.
+
 ## Qué funciona como base
 
 - Simulación 2.5D existente: mundo horizontal circular, cámara, controles, combate, recogida y rescate, oleadas, récords y modos de dificultad.
