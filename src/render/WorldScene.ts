@@ -6,7 +6,7 @@ import { Random } from '../core/Random';
 import { CONFIG, SAFE_BASE, SETTLEMENTS } from '../game/config';
 import type { MissionMode } from '../game/MissionMode';
 import { Terrain } from '../game/Terrain';
-import { DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences, resolveLandscape } from '../landscape/LandscapeConfig';
+import { DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, decorColorForStyle, defaultLandscapePreferences, resolveLandscape } from '../landscape/LandscapeConfig';
 import type { LandscapePreferences } from '../landscape/LandscapeConfig';
 import { ParallaxLandscape } from './ParallaxLandscape';
 import { FOREGROUND_DEPTH, MIDGROUND_DEPTH, ForegroundDecor } from './ForegroundDecor';
@@ -177,8 +177,12 @@ export class WorldScene {
     this.stars.visible = style.stars;
     this.moon.visible = style.moon;
     this.landscape.rebuild(style, this.seed, wave);
-    this.foreground.rebuild(style.foreground ?? { ...DEFAULT_FOREGROUND }, this.seed, style.seed, wave);
-    this.midground.rebuild(style.midground ?? { ...DEFAULT_MIDGROUND }, this.seed, style.seed, wave);
+    this.foreground.rebuild({
+      ...(style.foreground ?? DEFAULT_FOREGROUND), color: decorColorForStyle(style, 'foreground'),
+    }, this.seed, style.seed, wave);
+    this.midground.rebuild({
+      ...(style.midground ?? DEFAULT_MIDGROUND), color: decorColorForStyle(style, 'midground'),
+    }, this.seed, style.seed, wave);
   }
 
   update(cameraX: number, viewWidth: number, missionMode: MissionMode, reducedMotion = false): void {
