@@ -23,6 +23,20 @@ export interface LandscapeLayer {
   detail: number;
 }
 
+export type ForegroundKind = 'trees' | 'fence' | 'grille';
+
+export interface ForegroundConfig {
+  enabled: boolean;
+  kind: ForegroundKind;
+  color: string;
+  opacity: number;
+  parallax: number;
+}
+
+export const DEFAULT_FOREGROUND: Readonly<ForegroundConfig> = Object.freeze({
+  enabled: false, kind: 'trees', color: '#172b29', opacity: 0.48, parallax: 1.12,
+});
+
 export interface LandscapeStyle {
   skyTop: string;
   skyBottom: string;
@@ -30,6 +44,7 @@ export interface LandscapeStyle {
   moon: boolean;
   seed: number;
   layers: LandscapeLayer[];
+  foreground?: ForegroundConfig;
   automatic?: AutomaticLandscape;
   advancedEdited?: boolean;
 }
@@ -148,6 +163,7 @@ export function copyLandscape(style: LandscapeStyle): LandscapeStyle {
   return {
     ...style,
     layers: style.layers.map(layer => ({ ...layer })),
+    ...(style.foreground ? { foreground: { ...style.foreground } } : {}),
     ...(style.automatic ? { automatic: { ...style.automatic } } : {}),
   };
 }
@@ -181,7 +197,7 @@ export function defaultLandscapePreferences(): LandscapePreferences {
   return {
     selection: 'cycle',
     mode: 'automatic',
-    custom: { ...copyLandscape(LANDSCAPE_PRESETS.night.style), automatic: copyAutomatic(AUTO_PRESETS.night), advancedEdited: false },
+    custom: { ...copyLandscape(LANDSCAPE_PRESETS.night.style), foreground: { ...DEFAULT_FOREGROUND }, automatic: copyAutomatic(AUTO_PRESETS.night), advancedEdited: false },
     library: [],
     cyclePool: [...PRESET_ORDER],
     rotation: 'sequential',
@@ -269,6 +285,21 @@ function sanitizeAutomatic(value: unknown, fallback: AutomaticLandscape): Automa
   };
 }
 
+export function sanitizeForeground(value: unknown, fallback: ForegroundConfig = { ...DEFAULT_FOREGROUND }): ForegroundConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...fallback };
+  const v = value as Record<string, unknown>;
+  const bounded = (candidate: unknown, min: number, max: number, previous: number): number =>
+    typeof candidate === 'number' && Number.isFinite(candidate)
+      ? Math.max(min, Math.min(max, candidate)) : previous;
+  return {
+    enabled: typeof v.enabled === 'boolean' ? v.enabled : fallback.enabled,
+    kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille' ? v.kind : fallback.kind,
+    color: color(v.color, fallback.color),
+    opacity: bounded(v.opacity, 0.1, 0.85, fallback.opacity),
+    parallax: bounded(v.parallax, 1, 1.35, fallback.parallax),
+  };
+}
+
 export function sanitizeLandscapeStyle(value: unknown, fallback = defaultLandscapePreferences().custom): LandscapeStyle {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return copyLandscape(fallback);
   const v = value as Record<string, unknown>;
@@ -295,6 +326,7 @@ export function sanitizeLandscapeStyle(value: unknown, fallback = defaultLandsca
     moon: typeof v.moon === 'boolean' ? v.moon : typeof v.stars === 'boolean' ? v.stars : fallback.moon,
     seed: int(v.seed, 0, 999999999, fallback.seed),
     layers,
+    foreground: sanitizeForeground(v.foreground, fallback.foreground ?? { ...DEFAULT_FOREGROUND }),
     automatic: sanitizeAutomatic(v.automatic, legacy
       ? {
           skyColor: color(v.skyTop, autoFallback.skyColor),
