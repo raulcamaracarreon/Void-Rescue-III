@@ -42,7 +42,8 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] Añadir **tercer plano** con profundidad entre el vehículo (z=0) y la montaña/edificio más próximo (z=-31); reutiliza los motivos con configuración y semilla independientes.
 - [x] Mantener primer plano en z=19, tercer plano en z=-18; mezcla transparente por orden explícito sin cambiar colisiones.
 - [x] Extender persistencia, saneamiento y pruebas para ambos planos; antiguo campo `foreground` permanece válido y `midground` se inicializa desactivado en guardados anteriores.
-- [ ] Ejecutar build, unitarias y Playwright de ambos backends en la máquina del usuario, revisar visualmente oclusión, fondo y rendimiento.
+- [x] Compilación `npm run build` correcta (TypeScript + Vite), 118/118 pruebas unitarias y 24/24 E2E Playwright completadas en `chromium-auto` y `chromium-webgl2` (resultados de la terminal del usuario, 25/10/2026).
+- [ ] Revisión visual manual de ambos planos durante el vuelo: superposición delante/detrás de los vehículos, fondo, paralaje, oclusión y rendimiento. El proyecto de navegador `chromium-auto` no confirma por sí solo que se utilizara WebGPU.
 - [ ] Editor de trazos, polígonos, siluetas y objetos individuales: fase 3. Por ahora «editable» significa controles de motivo/color/opacidad/paralaje por plano.
 - **Aceptación pendiente:** probar que activar y desactivar las rejas/árboles no altera impactos, rescates ni avance de oleada en una partida real.
 
