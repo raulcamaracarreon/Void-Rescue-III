@@ -69,12 +69,20 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] Editor de trazos, polígonos, siluetas y objetos individuales: fase 3. Por ahora «editable» significa controles de motivo, color, longitud, opacidad y paralaje por plano.
 - **Aceptación pendiente:** probar que activar y desactivar las rejas/árboles no altera impactos, rescates ni avance de oleada en una partida real.
 
-### 3. Editor de elementos y exportación (pendiente)
+### 3. Editor de elementos y exportación (iniciado, implementación pendiente de pruebas)
 
-- Rectángulo, línea, polígono, dibujo libre y composición de siluetas.
-- Selección, transformación, color/opacidad, duplicar, deshacer/rehacer, mostrar/ocultar.
-- Guardar/cargar de forma segura con validación y versión; exportar/importar JSON; evitar inyección HTML de nombres.
-- Aceptación: diseñar una cerca y un grupo de árboles sin editar código, guardarlos y recuperarlos.
+**Primera entrega en `feat/phase3-paint-editor`:**
+- [x] Opacidad de ambos planos ampliada de 85 % a **100 %**, con validación y prueba explícita.
+- [x] Motivo `drawing` con máscara de bits monocroma v1 (96 × 32 píxeles), independiente por plano y guardado dentro de cada paisaje.
+- [x] Ventana de edición estilo Paint: pincel, borrador, línea, rectángulo, limpiar, deshacer/rehacer y cancelar/aplicar.
+- [x] Geometría visual 2.5D a partir de píxeles, con color/opacidad/paralaje existentes; sin interacción con colisiones.
+- [x] Saneamiento acotado de máscaras y copia profunda entre paisajes; tests unitarios + Playwright añadidos.
+- [ ] Ejecutar `npm run build`, `npm run test` y E2E en el equipo del usuario, revisar dibujo y persistencia real y ambos backends.
+- [ ] Herramientas posteriores: polígono, dibujo de figuras compuestas, selección de objetos/píxeles, copiar/duplicar, desplazar, escala y ajustes de dimensiones del lienzo sin pérdida de dibujos.
+- [ ] Exportación e importación JSON versionada y validada, separada de nombres HTML y datos ejecutables.
+- [ ] Validar visualmente edición en dos planos, mundo circular, transparencia 100 %, opacidad, gradiente normal/inverso y restauración por oleada.
+
+**Aceptación del primer incremento:** crear dibujos distintos para primero y tercero, cancelar sin cambios, deshacer y rehacer, aplicar, guardar en la biblioteca y recuperar después de recargar. La fase 3 completa se cerrará solamente tras terminar los puntos restantes.
 
 ### 4. Vehículos y perfiles de movimiento (pendiente)
 
