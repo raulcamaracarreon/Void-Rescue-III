@@ -175,3 +175,51 @@ test('ofrece gradiente normal e inverso independiente en cada plano y conserva e
   await expect(reopened.getByRole('checkbox', { name: 'Invertir gradiente de primer plano' }))
     .toBeDisabled();
 });
+
+
+test('edita edificios y longitud lateral independiente, con persistencia sin perder gradientes', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await dialog.getByRole('combobox', { name: 'Estilo de paisaje' }).selectOption('ice');
+
+  await dialog.getByRole('checkbox', { name: 'Activar tercer plano' }).check();
+  await dialog.getByRole('combobox', { name: 'Motivo de tercer plano' }).selectOption('buildings');
+  await dialog.getByRole('spinbutton', { name: 'Longitud lateral de tercer plano' }).fill('25');
+  await dialog.getByRole('spinbutton', { name: 'Longitud lateral de tercer plano' }).press('Tab');
+  await dialog.getByRole('combobox', { name: 'Modo de color de tercer plano' }).selectOption('gradient');
+  await dialog.getByRole('checkbox', { name: 'Invertir gradiente de tercer plano' }).check();
+
+  await dialog.getByRole('checkbox', { name: 'Activar primer plano' }).check();
+  await dialog.getByRole('combobox', { name: 'Motivo de primer plano' }).selectOption('buildings');
+  await dialog.getByRole('spinbutton', { name: 'Longitud lateral de primer plano' }).fill('65');
+  await dialog.getByRole('spinbutton', { name: 'Longitud lateral de primer plano' }).press('Tab');
+  const style = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom);
+  expect(style.midground).toMatchObject({
+    enabled: true, kind: 'buildings', spanPercent: 25,
+    colorMode: 'gradient', invertGradient: true,
+  });
+  expect(style.foreground).toMatchObject({
+    enabled: true, kind: 'buildings', spanPercent: 65,
+    colorMode: 'manual', invertGradient: false,
+  });
+
+  await dialog.getByRole('textbox', { name: 'Nombre del paisaje' }).fill('Ciudad con tramos libres');
+  await dialog.getByRole('button', { name: 'Guardar nuevo' }).click();
+  const saved = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.library);
+  expect(saved).toHaveLength(1);
+  expect(saved[0]!.style.foreground?.spanPercent).toBe(65);
+  expect(saved[0]!.style.midground?.spanPercent).toBe(25);
+  await dialog.getByRole('button', { name: /LISTO/ }).click();
+
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__VOID_RESCUE__));
+  const restored = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.library[0]!.style);
+  expect(restored.foreground).toEqual(saved[0]!.style.foreground);
+  expect(restored.midground).toEqual(saved[0]!.style.midground);
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const reopened = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await expect(reopened.getByRole('combobox', { name: 'Motivo de primer plano' })).toHaveValue('buildings');
+  await expect(reopened.getByRole('combobox', { name: 'Motivo de tercer plano' })).toHaveValue('buildings');
+  await expect(reopened.getByRole('spinbutton', { name: 'Longitud lateral de tercer plano' })).toHaveValue('25');
+  await expect(reopened.getByRole('spinbutton', { name: 'Longitud lateral de primer plano' })).toHaveValue('65');
+});
