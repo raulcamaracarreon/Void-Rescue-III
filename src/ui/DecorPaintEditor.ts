@@ -15,7 +15,7 @@ export class DecorPaintEditor {
   private readonly resolution: HTMLSelectElement;
   private readonly zoom: HTMLSelectElement;
   private readonly brushSize: HTMLInputElement;
-  private readonly brushValue: HTMLOutputElement;
+  private readonly brushValue: HTMLElement;
   private readonly filled: HTMLInputElement;
   private readonly polygonButton: HTMLButtonElement;
   private readonly status: HTMLElement;
@@ -61,7 +61,7 @@ export class DecorPaintEditor {
         </label>
         <label>Grosor
           <input type="range" class="decor-paint-brush" min="1" max="32" value="6" aria-label="Grosor del pincel">
-          <output class="decor-paint-brush-value">6 px</output>
+          <span class="decor-paint-brush-value" aria-live="off">6 px</span>
         </label>
         <label>Rellenar figura <input type="checkbox" class="decor-paint-filled" aria-label="Rellenar figura" checked></label>
         <label>Zoom
@@ -95,11 +95,11 @@ export class DecorPaintEditor {
     this.resolution = this.dialog.querySelector<HTMLSelectElement>('.decor-paint-resolution')!;
     this.zoom = this.dialog.querySelector<HTMLSelectElement>('.decor-paint-zoom')!;
     this.brushSize = this.dialog.querySelector<HTMLInputElement>('.decor-paint-brush')!;
-    this.brushValue = this.dialog.querySelector<HTMLOutputElement>('.decor-paint-brush-value')!;
+    this.brushValue = this.dialog.querySelector<HTMLElement>('.decor-paint-brush-value')!;
     this.filled = this.dialog.querySelector<HTMLInputElement>('.decor-paint-filled')!;
     this.polygonButton = this.dialog.querySelector<HTMLButtonElement>('[data-paint="polygon-close"]')!;
     this.brushSize.addEventListener('input', () => {
-      this.brushValue.value = `${this.brushSize.value} px`;
+      this.brushValue.textContent = `${this.brushSize.value} px`;
     });
     this.tool.addEventListener('change', () => {
       this.polygon = [];
@@ -204,7 +204,10 @@ export class DecorPaintEditor {
     this.onApply = apply;
     this.tool.value = 'brush';
     this.resolution.value = String(this.bitmap.width);
-    this.changeZoom(2);
+    // Fit the whole panorama at opening so pointer interactions reach every part
+    // of the bitmap. Users may then zoom in explicitly to edit fine detail.
+    this.changeZoom(1);
+    this.dialog.querySelector<HTMLElement>('.decor-paint-viewport')!.scrollTo({ left: 0, top: 0 });
     this.dialog.querySelector<HTMLElement>('.decor-paint-title')!.textContent =
       `Dibujar ${planeLabel}`;
     this.paint();
@@ -280,7 +283,7 @@ export class DecorPaintEditor {
   }
 
   private changeZoom(value: number): void {
-    const zoom = [1, 2, 4, 8].includes(value) ? value : 2;
+    const zoom = [1, 2, 4, 8].includes(value) ? value : 1;
     this.zoom.value = String(zoom);
     this.canvas.style.width = `${zoom * 100}%`;
   }
