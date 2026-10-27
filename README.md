@@ -36,7 +36,7 @@ Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar
 
 **Corrección de pruebas E2E:** el primer intento de validación de esta ampliación terminó con **4 pruebas aprobadas y 4 fallidas**. Las dos causas identificadas fueron un selector de estado ambiguo y un área de dibujo no visible con zoom 2×. En la rama se ajustó el inicio del editor a **1×, lienzo completo visible** y se corrigió la semántica y selección del indicador de grosor. Hay una prueba nueva para el lado derecho del panorama. **El usuario volvió a ejecutar Playwright el 26/10/2026 y las 10 pruebas pasaron**, cinco en `chromium-auto` y cinco en `chromium-webgl2` (24.1 s).
 
-**Implementado en GitHub, con 10/10 pruebas E2E aprobadas; queda pendiente la inspección visual durante una partida y no se ha fusionado a `main`.**
+**Implementado en GitHub y validado con 10/10 pruebas E2E del editor panorámico.** Una revisión manual posterior detectó un error de trazo en círculo/triángulo: ahora las figuras se reconstruyen desde el inicio del arrastre, mientras que solo pincel y borrador acumulan segmentos. La prueba específica de figuras rellenas pasó **2/2 en dos ejecuciones** (Chromium automático y WebGL2, 26/10/2026). Sigue pendiente inspección visual durante una partida. **Sin fusión a `main`.**
 
 **Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
