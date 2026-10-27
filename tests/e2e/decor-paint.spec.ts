@@ -84,14 +84,14 @@ test('cancelar no cambia el dibujo, y deshacer y rehacer conservan la máscara',
 });
 
 
-test('usa 288×96 por defecto, permite variar resolución sin borrar ni estirar el dibujo', async ({ page }) => {
+test('usa panorama 2048×256 por defecto, cambia resolución sin destruir dibujos antiguos', async ({ page }) => {
   await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
   const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
   await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
   let editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
   let resolution = editor.getByRole('combobox', { name: 'Resolución del lienzo' });
-  await expect(resolution).toHaveValue('288');
-  await expect(editor.getByRole('status')).toContainText('288 × 96');
+  await expect(resolution).toHaveValue('2048');
+  await expect(editor.getByRole('status')).toContainText('2048 × 256');
   const bounds = await editor.locator('canvas').boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width * 0.2, bounds!.y + bounds!.height * 0.25);
@@ -100,12 +100,14 @@ test('usa 288×96 por defecto, permite variar resolución sin borrar ni estirar 
   await page.mouse.up();
   await expect(editor.getByRole('status')).toContainText('pintados');
 
-  await resolution.selectOption('384');
-  await expect(editor.getByRole('status')).toContainText('384 × 128');
+  await resolution.selectOption('1024');
+  await expect(editor.getByRole('status')).toContainText('1024 × 128');
   await editor.getByRole('button', { name: 'Deshacer' }).click();
-  await expect(resolution).toHaveValue('288');
+  await expect(resolution).toHaveValue('2048');
   await editor.getByRole('button', { name: 'Rehacer' }).click();
-  await expect(resolution).toHaveValue('384');
+  await expect(resolution).toHaveValue('1024');
+  await resolution.selectOption('512');
+  await resolution.selectOption('384');
   await resolution.selectOption('192');
   await resolution.selectOption('96');
   await expect(editor.getByRole('status')).toContainText('96 × 32');
@@ -130,4 +132,49 @@ test('usa 288×96 por defecto, permite variar resolución sin borrar ni estirar 
   expect(after.width).toBe(288);
   expect(after.height).toBe(96);
   expect(after.rows.join('')).toContain('1');
+});
+
+
+test('incorpora zoom, pincel grueso, elipse, triángulo y polígono relleno', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const zoom = dialog.getByRole('combobox', { name: 'Zoom del lienzo' });
+  const canvas = dialog.locator('canvas');
+  await expect(dialog.getByRole('combobox', { name: 'Resolución del lienzo' })).toHaveValue('2048');
+  await expect(zoom).toHaveValue('2');
+  await dialog.getByRole('button', { name: 'Acercar lienzo' }).click();
+  await expect(zoom).toHaveValue('4');
+  await expect(canvas).toHaveCSS('width', /.+px/);
+  await dialog.getByRole('button', { name: 'Alejar lienzo' }).click();
+  await zoom.selectOption('1');
+
+  await dialog.getByRole('slider', { name: 'Grosor del pincel' }).fill('12');
+  await expect(dialog.locator('.decor-paint-brush-value')).toHaveText('12 px');
+  const rectangle = await canvas.boundingBox();
+  expect(rectangle).not.toBeNull();
+  await page.mouse.click(rectangle!.x + rectangle!.width * .10, rectangle!.y + rectangle!.height * .25);
+  await dialog.getByRole('combobox', { name: 'Herramienta de dibujo' }).selectOption('circle');
+  await page.mouse.move(rectangle!.x + rectangle!.width * .20, rectangle!.y + rectangle!.height * .10);
+  await page.mouse.down();
+  await page.mouse.move(rectangle!.x + rectangle!.width * .27, rectangle!.y + rectangle!.height * .70, { steps: 5 });
+  await page.mouse.up();
+  await dialog.getByRole('combobox', { name: 'Herramienta de dibujo' }).selectOption('triangle');
+  await page.mouse.move(rectangle!.x + rectangle!.width * .35, rectangle!.y + rectangle!.height * .20);
+  await page.mouse.down();
+  await page.mouse.move(rectangle!.x + rectangle!.width * .44, rectangle!.y + rectangle!.height * .70, { steps: 5 });
+  await page.mouse.up();
+  await dialog.getByRole('combobox', { name: 'Herramienta de dibujo' }).selectOption('polygon');
+  await page.mouse.click(rectangle!.x + rectangle!.width * .55, rectangle!.y + rectangle!.height * .20);
+  await page.mouse.click(rectangle!.x + rectangle!.width * .68, rectangle!.y + rectangle!.height * .27);
+  await page.mouse.click(rectangle!.x + rectangle!.width * .62, rectangle!.y + rectangle!.height * .80);
+  await expect(dialog.getByRole('button', { name: 'Cerrar polígono' })).toBeEnabled();
+  await dialog.getByRole('button', { name: 'Cerrar polígono' }).click();
+  await dialog.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const style = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom);
+  expect(style.foreground?.kind).toBe('drawing');
+  expect(style.foreground?.bitmap?.width).toBe(2048);
+  expect(style.foreground?.bitmap?.height).toBe(256);
+  expect(style.foreground?.bitmap?.rows.join('')).toContain('1');
 });
