@@ -6,7 +6,7 @@ import {
   DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences,
   sanitizeDecorBitmap, sanitizeLandscapePreferences,
 } from '../../src/landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels, drawDecorPolygon, normalizeDecorSelection, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
+import { clampDecorOrigin, copyDecorRegion, decorInkCount, drawDecorPixels, drawDecorPolygon, eraseDecorRegion, moveDecorRegion, normalizeDecorSelection, pasteDecorRegion, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
 import { FOREGROUND_DEPTH, MIDGROUND_DEPTH, ForegroundDecor, drawingMotifWidth,
   decorSpanWidth } from '../../src/render/ForegroundDecor';
 
@@ -61,6 +61,72 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(normalizeDecorSelection({ x: 0, y: 0 }, { x: 10, y: 10 }, 0, 256)).toBeNull();
     expect(normalizeDecorSelection({ x: NaN, y: 0 }, { x: 10, y: 10 }, 96, 32)).toBeNull();
     expect(normalizeDecorSelection({ x: 0, y: 0 }, { x: Infinity, y: 10 }, 96, 32)).toBeNull();
+  });
+
+  it('copia regiones binarias y pega únicamente tinta, conservando el fondo transparente', () => {
+    for (const width of [96, 2048]) {
+      const origin = blankDecorBitmap(width);
+      const withInk = drawDecorPixels(origin, 'brush', { x: 4, y: 3 }, { x: 4, y: 3 });
+      const selection = { x: 2, y: 1, width: 5, height: 5 };
+      const clipboard = copyDecorRegion(withInk, selection)!;
+      expect(clipboard.width).toBe(5);
+      expect(clipboard.rows[2]![2]).toBe('1');
+      expect(clipboard.rows[0]![0]).toBe('0');
+      const another = drawDecorPixels(withInk, 'brush', { x: 12, y: 12 }, { x: 12, y: 12 });
+      const result = pasteDecorRegion(another, clipboard, { x: 10, y: 10 });
+      expect(result.rows[12]![12]).toBe('1');
+      expect(result.rows[14]![14]).toBe('0');
+      expect(another.rows[12]![12]).toBe('1');
+      expect(origin.rows[3]![4]).toBe('0');
+      expect(withInk.rows[12]![12]).toBe('0');
+      // Clipboard is detached; later edits to the source cannot affect it.
+      withInk.rows[3] = '0'.repeat(width);
+      expect(clipboard.rows[2]![2]).toBe('1');
+    }
+  });
+
+  it('corta y borra solo la selección y mueve regiones superpuestas desde una instantánea', () => {
+    const blank = blankDecorBitmap(96);
+    let scene = drawDecorPixels(blank, 'rectangle',
+      { x: 10, y: 6 }, { x: 15, y: 12 }, { filled: true });
+    scene = drawDecorPixels(scene, 'brush', { x: 35, y: 6 }, { x: 35, y: 6 });
+    const select = { x: 10, y: 6, width: 6, height: 7 };
+    const cut = eraseDecorRegion(scene, select);
+    expect(cut.rows[6]![10]).toBe('0');
+    expect(cut.rows[6]![35]).toBe('1');
+    expect(scene.rows[6]![10]).toBe('1');
+    const moved = moveDecorRegion(scene, select, { x: 13, y: 8 });
+    expect(moved.rows[6]![10]).toBe('0');
+    expect(moved.rows[8]![13]).toBe('1');
+    expect(moved.rows[12]![18]).toBe('1');
+    expect(moved.rows[6]![35]).toBe('1');
+    expect(decorInkCount(moved)).toBe(decorInkCount(scene));
+    expect(moveDecorRegion(scene, select, { x: 10, y: 6 }).rows).toEqual(scene.rows);
+  });
+
+  it('limita movimiento y pegado a lienzos antiguos y panorámicos y rechaza portapapeles inválidos', () => {
+    for (const width of [96, 2048]) {
+      const bitmap = blankDecorBitmap(width);
+      const clip = { width: 3, height: 2, rows: ['101', '010'] };
+      const target = clampDecorOrigin(bitmap, clip.width, clip.height,
+        { x: width + 100, y: bitmap.height + 50 });
+      expect(target).toEqual({ x: width - 3, y: bitmap.height - 2 });
+      const pasted = pasteDecorRegion(bitmap, clip,
+        { x: width + 100, y: bitmap.height + 50 });
+      expect(pasted.rows[bitmap.height - 2]![width - 3]).toBe('1');
+      expect(pasted.rows[bitmap.height - 2]![width - 1]).toBe('1');
+      expect(pasted.rows[bitmap.height - 1]![width - 2]).toBe('1');
+      expect(bitmap.rows[bitmap.height - 2]![width - 3]).toBe('0');
+      expect(copyDecorRegion(bitmap, { x: width, y: 2, width: 3, height: 3 })).toBeNull();
+      expect(pasteDecorRegion(bitmap, { width: 5, height: 1, rows: ['<bad>'] },
+        { x: 0, y: 0 }).rows).toEqual(bitmap.rows);
+      const originallyPainted = drawDecorPixels(bitmap, 'brush',
+        { x: width - 4, y: bitmap.height - 3 }, { x: width - 4, y: bitmap.height - 3 });
+      const moved = moveDecorRegion(originallyPainted,
+        { x: width - 5, y: bitmap.height - 4, width: 3, height: 3 },
+        { x: width + 100, y: bitmap.height + 200 });
+      expect(moved.rows[bitmap.height - 2]![width - 2]).toBe('1');
+    }
   });
 
   it('dibuja con pincel, línea, rectángulo y borrador, sin cambiar el origen', () => {
