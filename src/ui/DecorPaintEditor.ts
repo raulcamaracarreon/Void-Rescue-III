@@ -472,7 +472,8 @@ export class DecorPaintEditor {
   private floatingPositionChanged(a: FloatingDecorRegion | null,
     b: FloatingDecorRegion | null): boolean {
     if (!a || !b) return a !== b;
-    return a.position.x !== b.position.x || a.position.y !== b.position.y;
+    return a.base !== b.base || a.clip !== b.clip
+      || a.position.x !== b.position.x || a.position.y !== b.position.y;
   }
 
   private changed(a: DecorBitmap, b: DecorBitmap): boolean {
@@ -651,7 +652,7 @@ export class DecorPaintEditor {
       this.ctx.restore();
     }
     const selText = this.selection
-      ? ` · selección x=${this.selection.x}, y=${this.selection.y} · ${this.selection.width} × ${this.selection.height} px`
+      ? ` · selección x=${this.selection.x}, y=${this.selection.y} · ${this.selection.width} × ${this.selection.height} px${this.floating ? ' · copia flotante' : ''}`
       : '';
     this.status.textContent = `${this.bitmap.width} × ${this.bitmap.height} píxeles · ${decorInkCount(this.bitmap)} pintados · ${this.undo.length} pasos para deshacer${selText}`;
     this.polygonButton.disabled = this.polygon.length < 3;
