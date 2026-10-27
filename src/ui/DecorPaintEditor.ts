@@ -461,15 +461,34 @@ export class DecorPaintEditor {
     this.paint();
   }
 
+  private floatingSelection(region: FloatingDecorRegion): DecorSelection {
+    return {
+      x: region.position.x, y: region.position.y,
+      width: Math.min(region.clip.width, this.bitmap.width - region.position.x),
+      height: Math.min(region.clip.height, this.bitmap.height - region.position.y),
+    };
+  }
+
+  private floatingPositionChanged(a: FloatingDecorRegion | null,
+    b: FloatingDecorRegion | null): boolean {
+    if (!a || !b) return a !== b;
+    return a.position.x !== b.position.x || a.position.y !== b.position.y;
+  }
+
   private changed(a: DecorBitmap, b: DecorBitmap): boolean {
     return a.width !== b.width || a.height !== b.height
       || a.rows.some((row, index) => row !== b.rows[index]);
   }
 
-  private commitBitmap(next: DecorBitmap): void {
-    if (this.changed(this.bitmap, next)) {
+  private commitBitmap(next: DecorBitmap,
+    nextFloating: FloatingDecorRegion | null = null): void {
+    if (this.changed(this.bitmap, next)
+      || this.floatingPositionChanged(this.floating, nextFloating)) {
       this.snapshotForUndo();
       this.bitmap = next;
+      this.floating = nextFloating;
+    } else if (!nextFloating) {
+      this.floating = null;
     }
     this.paint();
   }
@@ -482,7 +501,15 @@ export class DecorPaintEditor {
         x: original.x + next.x - this.start.x,
         y: original.y + next.y - this.start.y,
       });
-      this.bitmap = moveDecorRegion(this.snapshot, original, position);
+      if (this.snapshotFloating) {
+        // Compose from the original UNDERLAY, never the already flattened paste.
+        const float = { ...this.snapshotFloating, position };
+        this.floating = float;
+        this.bitmap = pasteDecorRegion(float.base, float.clip, position);
+      } else {
+        this.bitmap = moveDecorRegion(this.snapshot, original, position);
+        this.floating = null;
+      }
       this.selection = { ...original, ...position };
     } else {
       this.selection = normalizeDecorSelection(this.start, next,
@@ -493,7 +520,9 @@ export class DecorPaintEditor {
 
   private copySelection(): void {
     if (!this.selection || this.pointer !== null) return;
-    this.clipboard = copyDecorRegion(this.bitmap, this.selection);
+    this.clipboard = this.floating
+      ? { ...this.floating.clip, rows: this.floating.clip.rows.slice() }
+      : copyDecorRegion(this.bitmap, this.selection);
     this.clipboardOrigin = this.clipboard ? { x: this.selection.x, y: this.selection.y } : null;
     this.paint();
   }
@@ -501,12 +530,14 @@ export class DecorPaintEditor {
   private cutSelection(): void {
     if (!this.selection || this.pointer !== null) return;
     this.copySelection();
-    this.commitBitmap(eraseDecorRegion(this.bitmap, this.selection));
+    this.commitBitmap(this.floating ? this.floating.base
+      : eraseDecorRegion(this.bitmap, this.selection));
   }
 
   private deleteSelection(): void {
     if (!this.selection || this.pointer !== null) return;
-    this.commitBitmap(eraseDecorRegion(this.bitmap, this.selection));
+    this.commitBitmap(this.floating ? this.floating.base
+      : eraseDecorRegion(this.bitmap, this.selection));
   }
 
   private pasteSelection(): void {
@@ -520,12 +551,15 @@ export class DecorPaintEditor {
       x: base.x + 16 <= maxX ? base.x + 16 : Math.max(0, base.x - 16),
       y: base.y + 8 <= maxY ? base.y + 8 : Math.max(0, base.y - 8),
     });
-    this.commitBitmap(pasteDecorRegion(this.bitmap, this.clipboard, position));
-    this.selection = {
-      x: position.x, y: position.y,
-      width: Math.min(this.clipboard.width, this.bitmap.width - position.x),
-      height: Math.min(this.clipboard.height, this.bitmap.height - position.y),
+    // Leave the paste FLOATING over a frozen base until the user changes tools,
+    // deselects, or applies. Moving this copy restores precisely its underlay.
+    const floating: FloatingDecorRegion = {
+      base: this.bitmap,
+      clip: { ...this.clipboard, rows: this.clipboard.rows.slice() },
+      position,
     };
+    this.commitBitmap(pasteDecorRegion(floating.base, floating.clip, position), floating);
+    this.selection = this.floatingSelection(floating);
     this.paint();
   }
 
@@ -540,7 +574,12 @@ export class DecorPaintEditor {
     const selection = this.selection;
     const position = clampDecorOrigin(this.bitmap, selection.width, selection.height,
       { x: selection.x + dx * step, y: selection.y + dy * step });
-    this.commitBitmap(moveDecorRegion(this.bitmap, selection, position));
+    if (this.floating) {
+      const floated = { ...this.floating, position };
+      this.commitBitmap(pasteDecorRegion(floated.base, floated.clip, position), floated);
+    } else {
+      this.commitBitmap(moveDecorRegion(this.bitmap, selection, position));
+    }
     this.selection = { ...selection, ...position };
     this.paint();
   }
@@ -548,6 +587,8 @@ export class DecorPaintEditor {
   private cancelSelection(): void {
     this.selection = null;
     this.selectionBeforeDrag = null;
+    // Explicit deselection commits the already visible composite bitmap.
+    this.floating = null;
     this.paint();
   }
 
