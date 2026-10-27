@@ -67,7 +67,7 @@ test('cancelar no cambia el dibujo, y deshacer y rehacer conservan la máscara',
   let editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
   let bounds = await editor.locator('canvas').boundingBox();
   await page.mouse.click(bounds!.x + bounds!.width * .35, bounds!.y + bounds!.height * .5);
-  await editor.getByRole('button', { name: 'Cancelar' }).click();
+  await editor.getByRole('button', { name: 'Cancelar', exact: true }).click();
   expect((await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom))
     .foreground?.bitmap).toBeUndefined();
   await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
@@ -319,6 +319,8 @@ test('la selección conserva coordenadas con zoom y scroll y se cancela con Esca
   await resolution.selectOption('96');
   await tool.selectOption('select');
   await zoom.selectOption('4');
+  const historyBeforeSelection = (await status.innerText()).match(/(\d+) pasos para deshacer/)?.[1];
+  expect(historyBeforeSelection).toBe('1'); // resizing from 2048 to 96 is itself undoable.
   // The dialog itself scrolls on short screens; first bring the canvas region
   // into view, then scroll inside the panorama, not the outer modal.
   await viewport.scrollIntoViewIfNeeded();
@@ -348,7 +350,9 @@ test('la selección conserva coordenadas con zoom y scroll y se cancela con Esca
   await page.keyboard.press('Escape');
   await expect(editor).toBeVisible(); // first Escape deselects; does not close the editor
   await expect(status).not.toContainText('selección x=');
-  await expect(editor.getByRole('button', { name: 'Deshacer' })).toBeDisabled();
+  // Deselecting must NOT erase the valid undo step created by changing resolution.
+  await expect(status).toContainText(`${historyBeforeSelection} pasos para deshacer`);
+  await expect(editor.getByRole('button', { name: 'Deshacer' })).toBeEnabled();
   await page.keyboard.press('Escape');
   await expect(editor).not.toBeVisible();
 });
