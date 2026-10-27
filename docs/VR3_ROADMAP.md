@@ -13,6 +13,23 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 5. Se podrá editar el contenido visual sin programar: figuras geométricas, trazos, polígonos y siluetas, selección, copia, reordenamiento, color, opacidad, posición, escala y control de paralaje.
 6. Reservar JSON versionado para diseños exportables y portables; mantener datos de VR3 separados de las claves locales de VR2.
 
+## Corte ejecutivo de continuidad — 26/10/2026
+
+**Situación:** prototipo Void Rescue III **v0.1.0, no publicado**, separado de VR2. La base de combate, rescate, oleadas y puntuación procede de VR2 y se conserva sin reescritura. El trabajo reciente se concentró en escenarios y edición gráfica, no en los futuros perfiles de vehículos.
+
+| Fase | Avance comprobable | Estado al corte |
+| --- | --- | --- |
+| 0. Arranque independiente | Repositorio, identificador y almacenamiento propios, workflows manuales | **Completada** |
+| 1. Rotación de ambientes | Dos columnas, orden, arrastrar, posición exacta; pruebas funcionales previas | **Funcional**, quedan QA de teclado, pantallas estrechas y bibliotecas extensas |
+| 2. Motor por capas | Primer/tercer plano, gradiente, edificios, longitud lateral, opacidad, paralaje y serialización | **Implementada**, con QA visual de vuelo/oclusión y no-colisión por cerrar |
+| 3. Editor de elementos y exportación | Paint panorámico, máscaras compatibles, figuras, selección y manipulación reversible | **Núcleo funcional aprobado visualmente**; faltan exportación/importación JSON versionada, escala/transformación avanzada y ajustes de objeto |
+| 4. Vehículos y perfiles | Contrato de vehículo, helicóptero alternativo y paridad de jugabilidad | **No iniciada** |
+| 5. Entidades y escenarios jugables | Nuevas amenazas, rescatables y ambientes temáticos | **No iniciada** |
+
+**Cierre de selección (Entrega A+B):** el usuario confirmó visualmente el 26/10/2026 que tras implementar copias flotantes independientes y resolver la superposición «ahora sí funcionan correctamente las herramientas de selección». Se acepta **funcionalmente** este incremento y se considera resuelto el defecto de arrastrar píxeles del dibujo original. Antes de esa corrección, Playwright aprobó **20/20** escenarios E2E (44.7 s; Chromium automático y WebGL2). **No se ha aportado aquí la salida de build/Vitest ni de las 8 E2E focalizadas correspondientes al último parche de copias flotantes**: no trasladar las 20 aprobaciones previas a esa revisión. La rama sigue separada de `main`; la fusión requiere autorización expresa y controles de integración pertinentes.
+
+**Decisión de enfoque propuesta:** dejar de ampliar Paint indefinidamente. Considerar completa su **entrega funcional principal**, conservar exportación/importación validada, escalado/transformación e inspecciones visuales de regresión como **pendientes acotados de fase 3**, y planear el arranque de **fase 4 (perfiles de vehículo)**. Antes de desarrollar fase 4, validar con el usuario si será un juego con variantes de vehículo o modos/episodios separados; preservar la nave de VR2 como referencia de regresión. No crear tareas nuevas ni fusionar esta rama por registrar este corte.
+
 ## Fase 0 prioritaria — gradiente para los dos planos decorativos
 
 **Decisión nueva (25/10/2026):** antes de ampliar los motivos o desarrollar herramientas de dibujo, los planos de primer y tercer plano deben poder derivar su color de la paleta automática de dos colores, y cada uno debe poder **invertir** ese gradiente para comprobar contrastes.
@@ -112,7 +129,8 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] **Defecto detectado en revisión manual:** una copia duplicada quedaba fusionada con píxeles existentes al superponerse; mover la selección arrastraba también partes del dibujo anterior. Las 20 E2E anteriores no verificaban este caso.
 - [x] **Corrección codificada (pendiente de nueva validación):** copia/pegado ahora conserva temporalmente un fragmento **flotante** y la máscara de fondo previa. Cada traslado recompone desde ese fondo en vez de recoger lo que quedó debajo de la copia; al cancelar selección, cambiar herramienta o aplicar dibujo se consolida el bitmap. Deshacer/rehacer preservan la procedencia de la copia flotante y la posición seleccionada. Añadida indicación «copia flotante» en el editor.
 - [x] **Regresión añadida:** pruebas unitarias en lienzos 96×32 y 2048×256 para restaurar fondo y evitar copias fantasma, y dos escenarios E2E nuevos para duplicado superpuesto y movimiento posterior a deshacer/rehacer (ambos backends).
-- [ ] **Pruebas pendientes solo para este parche:** ejecutar build, Vitest de `decor-paint` y E2E dirigidas al duplicado superpuesto y flujos de selección. Confirmar manualmente que solo se mueve la copia y el original permanece; no fusionar rama hasta autorización.
+- [x] **Aceptación visual posterior al parche (26/10/2026):** el usuario confirmó que las herramientas de selección funcionan correctamente después de corregir el duplicado flotante superpuesto. Se cierra funcionalmente la Entrega B y se retoma el plan general.
+- [ ] **Evidencia automatizada posterior al último parche todavía no reportada:** build, Vitest de `decor-paint` y 8 E2E dirigidas a duplicado flotante/flujo de selección. Las 20/20 E2E previas pertenecen a la versión anterior. Mantener este control como puerta de integración, sin exigir repetir indiscriminadamente las pruebas antiguas.
 - [ ] **Después:** escala/rotación física de objetos, ajustes de dimensiones independientes del raster y exportación/importación JSON versionada.
 
 - [ ] Herramientas posteriores: selección de objetos/píxeles, copiar/duplicar, desplazar y escala física independiente del motivo; todavía no hay editor de vectores ni lienzo de tamaño libre.
