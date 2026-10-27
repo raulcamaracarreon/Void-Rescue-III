@@ -387,7 +387,7 @@ test('regiones antiguas: copia, duplica, corta, pega y deshace sin afectar otros
   await expect(editor.getByRole('button', { name: 'Copiar', exact: true })).toBeEnabled();
   await editor.getByRole('button', { name: 'Copiar', exact: true }).click();
   await expect(editor.getByRole('button', { name: 'Pegar', exact: true })).toBeEnabled();
-  await expect(painted()).resolves.toBe(originalCount);
+  expect(await painted()).toBe(originalCount);
 
   await editor.getByRole('button', { name: 'Duplicar' }).click();
   expect(await painted()).toBeGreaterThan(originalCount);
