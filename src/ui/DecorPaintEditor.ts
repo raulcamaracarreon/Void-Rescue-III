@@ -5,6 +5,19 @@ import type { DecorBitmap } from '../landscape/LandscapeConfig';
 import { clampDecorOrigin, copyDecorRegion, decorInkCount, drawDecorPixels, drawDecorPolygon, eraseDecorRegion, moveDecorRegion, normalizeDecorSelection, pasteDecorRegion, resizeDecorBitmap } from '../landscape/DecorDrawing';
 import type { DecorClipboard, DecorDrawTool, DecorSelection, PixelPoint } from '../landscape/DecorDrawing';
 
+/** A newly pasted copy remains independent of the already-painted bitmap.
+ * Its base records the pixels UNDER the copy before compositing.
+ */
+interface FloatingDecorRegion {
+  base: DecorBitmap;
+  clip: DecorClipboard;
+  position: PixelPoint;
+}
+interface PaintHistory {
+  bitmap: DecorBitmap;
+  floating: FloatingDecorRegion | null;
+}
+
 /** Small self-contained raster editor. Editing the draft does not mutate saved styles
  * until Aplicar is pressed; Cancelar discards it entirely. */
 export class DecorPaintEditor {
@@ -26,10 +39,13 @@ export class DecorPaintEditor {
   private movingSelection = false;
   private clipboard: DecorClipboard | null = null;
   private clipboardOrigin: PixelPoint | null = null;
+  /** Floating copied ink overlays base; motion must never pick up pixels underneath. */
+  private floating: FloatingDecorRegion | null = null;
+  private snapshotFloating: FloatingDecorRegion | null = null;
   private polygon: PixelPoint[] = [];
   private bitmap: DecorBitmap = blankDecorBitmap();
-  private undo: DecorBitmap[] = [];
-  private redo: DecorBitmap[] = [];
+  private undo: PaintHistory[] = [];
+  private redo: PaintHistory[] = [];
   private pointer: number | null = null;
   private start: PixelPoint = { x: 0, y: 0 };
   private last: PixelPoint = { x: 0, y: 0 };
@@ -148,6 +164,7 @@ export class DecorPaintEditor {
       this.selection = null;
       this.selectionBeforeDrag = null;
       this.movingSelection = false;
+      this.floating = null; // changing tools commits visible floating pixels
       this.paint();
     });
     this.zoom.addEventListener('change', () => this.changeZoom(Number(this.zoom.value)));
@@ -165,6 +182,7 @@ export class DecorPaintEditor {
       if (requested === this.bitmap.width) return;
       this.snapshotForUndo();
       this.bitmap = resizeDecorBitmap(this.bitmap, requested);
+      this.floating = null;
       this.polygon = [];
       this.selection = null;
       this.selectionBeforeDrag = null;
@@ -186,6 +204,7 @@ export class DecorPaintEditor {
       }
       if (this.tool.value === 'select') {
         this.selectionBeforeDrag = this.selection;
+        this.snapshotFloating = this.floating;
         // Drag from INSIDE an existing selection moves its ink as a single step;
         // drag outside starts a new region without changing the mask.
         this.movingSelection = Boolean(this.selection
@@ -205,6 +224,8 @@ export class DecorPaintEditor {
       this.pointer = event.pointerId;
       this.canvas.setPointerCapture(event.pointerId);
       this.snapshot = sanitizeDecorBitmap(this.bitmap);
+      this.snapshotFloating = this.floating;
+      this.floating = null;
       this.bitmap = drawDecorPixels(this.bitmap, this.tool.value as DecorDrawTool,
         this.start, this.start, this.drawOptions());
       this.paint();
@@ -220,13 +241,15 @@ export class DecorPaintEditor {
       if (this.pointer !== event.pointerId) return;
       if (this.tool.value === 'select') {
         this.dragSelection(event);
-        // Moving several pixels during one drag creates a SINGLE undo step.
-        if (this.movingSelection && this.snapshot && this.changed(this.snapshot, this.bitmap)) {
-          this.undo.push(this.snapshot);
-          if (this.undo.length > 30) this.undo.shift();
-          this.redo = [];
-        }
+        // Moving several pixels during one drag creates a SINGLE undo step,
+        // preserving a floating copy's underlying pixels and provenance.
+        if (this.movingSelection && this.snapshot
+          && (this.changed(this.snapshot, this.bitmap)
+            || this.floatingPositionChanged(this.snapshotFloating, this.floating)))
+          this.rememberUndo(this.snapshot, this.snapshotFloating);
+        if (!this.movingSelection) this.floating = null;
         this.snapshot = null;
+        this.snapshotFloating = null;
         this.movingSelection = false;
         this.selectionBeforeDrag = null;
         this.pointer = null;
@@ -236,13 +259,11 @@ export class DecorPaintEditor {
         return;
       }
       this.extend(event);
-      if (this.snapshot && this.snapshot.rows.join('') !== this.bitmap.rows.join('')) {
-        this.undo.push(this.snapshot);
-        if (this.undo.length > 30) this.undo.shift();
-        this.redo = [];
-      }
+      if (this.snapshot && this.changed(this.snapshot, this.bitmap))
+        this.rememberUndo(this.snapshot, this.snapshotFloating);
       this.pointer = null;
       this.snapshot = null;
+      this.snapshotFloating = null;
       if (this.canvas.hasPointerCapture(event.pointerId))
         this.canvas.releasePointerCapture(event.pointerId);
       this.paint();
@@ -251,11 +272,15 @@ export class DecorPaintEditor {
       if (this.pointer !== event.pointerId) return;
       if (this.tool.value === 'select') {
         if (this.movingSelection && this.snapshot) this.bitmap = this.snapshot;
+        this.floating = this.snapshotFloating;
         this.selection = this.selectionBeforeDrag;
         this.selectionBeforeDrag = null;
         this.movingSelection = false;
-      } else if (this.snapshot) this.bitmap = this.snapshot;
-      this.pointer = null; this.snapshot = null; this.paint();
+      } else if (this.snapshot) {
+        this.bitmap = this.snapshot;
+        this.floating = this.snapshotFloating;
+      }
+      this.pointer = null; this.snapshot = null; this.snapshotFloating = null; this.paint();
     });
 
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="undo"]')!.addEventListener('click', () => this.stepBack());
@@ -265,6 +290,7 @@ export class DecorPaintEditor {
       this.snapshotForUndo();
       this.polygon = [];
       this.bitmap = blankDecorBitmap(this.bitmap.width);
+      this.floating = null;
       this.selection = null;
       this.paint();
     });
@@ -331,6 +357,8 @@ export class DecorPaintEditor {
     this.selection = null;
     this.selectionBeforeDrag = null;
     this.movingSelection = false;
+    this.floating = null;
+    this.snapshotFloating = null;
     this.clipboard = null; // no clipboard bleed across planes or sessions
     this.clipboardOrigin = null;
     this.onApply = apply;
@@ -356,6 +384,8 @@ export class DecorPaintEditor {
     this.selection = null;
     this.selectionBeforeDrag = null;
     this.movingSelection = false;
+    this.floating = null;
+    this.snapshotFloating = null;
     this.clipboard = null;
     this.clipboardOrigin = null;
     this.onApply = null;
@@ -388,21 +418,23 @@ export class DecorPaintEditor {
 
   private stepBack(): void {
     this.polygon = [];
-    this.selection = null;
     const last = this.undo.pop();
     if (!last) return;
-    this.redo.push(this.bitmap);
-    this.bitmap = last;
+    this.redo.push({ bitmap: this.bitmap, floating: this.floating });
+    this.bitmap = last.bitmap;
+    this.floating = last.floating;
+    this.selection = this.floating ? this.floatingSelection(this.floating) : null;
     this.paint();
   }
 
   private stepForward(): void {
     this.polygon = [];
-    this.selection = null;
     const next = this.redo.pop();
     if (!next) return;
-    this.undo.push(this.bitmap);
-    this.bitmap = next;
+    this.undo.push({ bitmap: this.bitmap, floating: this.floating });
+    this.bitmap = next.bitmap;
+    this.floating = next.floating;
+    this.selection = this.floating ? this.floatingSelection(this.floating) : null;
     this.paint();
   }
 
@@ -410,16 +442,21 @@ export class DecorPaintEditor {
     return { size: Number(this.brushSize.value), filled: this.filled.checked };
   }
 
-  private snapshotForUndo(): void {
-    this.undo.push(sanitizeDecorBitmap(this.bitmap));
+  private rememberUndo(bitmap: DecorBitmap, floating: FloatingDecorRegion | null): void {
+    this.undo.push({ bitmap, floating });
     if (this.undo.length > 30) this.undo.shift();
     this.redo = [];
+  }
+
+  private snapshotForUndo(): void {
+    this.rememberUndo(sanitizeDecorBitmap(this.bitmap), this.floating);
   }
 
   private finishPolygon(): void {
     if (this.polygon.length < 3) return;
     this.snapshotForUndo();
     this.bitmap = drawDecorPolygon(this.bitmap, this.polygon, this.drawOptions());
+    this.floating = null;
     this.polygon = [];
     this.paint();
   }
