@@ -99,7 +99,7 @@ En el editor Paint, elegir «Seleccionar región», arrastrar desde cualquier es
 
 ## Entrega B — manipulación de regiones (26/10/2026)
 
-**Estado: implementación subida a `feat/phase3-selection-tools`, todavía pendiente de compilación y pruebas locales.** La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
+**Estado:** la Entrega B completó las pruebas anteriores con **20/20 E2E aprobadas en 44.7 s** (Chromium automático y WebGL2). Sin embargo, la revisión manual detectó un defecto de duplicación superpuesta que motivó una corrección posterior, aún **pendiente de validación local**. La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
 
 La barra de operaciones **Región** aparece debajo del lienzo. Selecciona con la herramienta «Seleccionar región» y utiliza **Copiar, Cortar, Pegar, Duplicar o Borrar selección**. Pegar y duplicar desplazan por defecto la región 16 píxeles a la derecha y 8 hacia abajo (sin salirse del lienzo); el color vacío del fragmento se considera transparente. Para **mover** un fragmento, arrastra desde dentro del rectángulo amarillo hacia la nueva posición; también hay botones de flechas para cambios de un píxel. Cada movimiento por arrastre y cada operación de edición debe generar como máximo un paso de deshacer. Copiar y cancelar selección no modifican el bitmap. El portapapeles es interno y se descarta al cambiar de plano/abrir sesión nueva. No usa portapapeles del sistema.
 
@@ -114,4 +114,17 @@ npx vitest run tests/unit/decor-paint.test.ts
 npx playwright test tests/e2e/decor-paint.spec.ts
 ```
 
-No repetir las pruebas después sin nuevos cambios. Con esta expansión el archivo E2E contiene **10 escenarios por backend** (20 ejecuciones previstas); un resultado menor puede indicar que la rama local aún no está actualizada.
+**Corrección de copias superpuestas (26/10/2026):** antes, «Duplicar» pegaba inmediatamente la máscara monocroma en el bitmap y el siguiente arrastre movía el rectángulo ya fusionado, incluyendo la tinta original. El editor ahora mantiene la copia como **selección flotante** (bitmap de fondo previo + fragmento binario + posición). Al desplazarla restaura la zona que tenía debajo, incluso si la copia se solapó con el original. Deshacer/rehacer conservan ese estado. La copia se incorpora definitivamente cuando se cancela la selección, se cambia de herramienta o se aplica el dibujo. En el estado del editor aparece «copia flotante» mientras es independiente. No se añade persistencia de capas ni se modifica el formato de los paisajes.
+
+**Pruebas nuevas pendientes tras el parche** (el conjunto anterior ya pasó):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase3-selection-tools
+npm run build
+npx vitest run tests/unit/decor-paint.test.ts
+npx playwright test tests/e2e/decor-paint.spec.ts -g "duplicado superpuesto|independencia del duplicado flotante|regiones antiguas|panorama: arrastrar"
+```
+
+Playwright ejecutará **8 casos focalizados** (cuatro escenarios por backend). Primero confirmar pruebas y después revisar visualmente duplicación con un original por debajo. Si aparece un fallo, conservar la salida. **Las 20 pruebas aprobadas pertenecen a la versión anterior a esta corrección**, no se deben atribuir al nuevo parche.
