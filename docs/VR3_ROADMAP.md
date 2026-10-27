@@ -99,10 +99,11 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 **Entrega B — manipulación reversible:** mover zona, copiar, pegar, duplicar, cortar y borrar, con clipping en límites del bitmap, transparencia y un paso de deshacer por operación. El portapapeles es del editor (sin permisos del sistema) y los datos de cada plano siguen aislados.
 
 **Criterio de aceptación:** probar selección, movimiento, duplicación, cancelación y deshacer en resolución panorámica 2048×256 y antigua 96×32; Playwright tanto en Chromium automático como WebGL2. No ejecutar GitHub Actions ni fusionar esta rama sin pruebas locales y aceptación del usuario.
-- [ ] Selección rectangular visible sobre el lienzo en coordenadas de bitmap (con zoom y scroll); no comprometer el dibujo hasta aplicar la acción.
+- [x] **Entrega A codificada en `feat/phase3-selection-tools`:** opción «Seleccionar región», arrastre en ambas direcciones, cuadro delimitador amarillo semitransparente (no se guarda en bitmap), cancelación por botón/Escape, lectura de coordenadas y dimensiones, saneamiento de límites para 96×32 y 2048×256 y conservación de máscara e historial. Al cambiar de herramienta o resolución se descarta la selección visual para evitar interpretaciones erróneas.
 - [ ] Seleccionar, mover y duplicar una región (recortar, copiar/pegar), con desplazamiento limitado al lienzo y tratamiento transparente de zonas vacías.
 - [ ] Eliminar selección o cancelar sin alterar la máscara; integrar operaciones con el mismo historial de deshacer/rehacer.
-- [ ] Pruebas de límites, dibujo antiguo/nuevo y E2E en ambos backends, con aceptación visual del usuario.
+- [x] Se agregaron pruebas unitarias de límites, selección invertida, píxel individual e inmutabilidad y pruebas E2E de selección en panorama, cancelación, zoom/scroll en 96×32 y Escape.
+- [ ] **Validación pendiente:** ejecutar `npm run build`, `npx vitest run tests/unit/decor-paint.test.ts` y `npx playwright test tests/e2e/decor-paint.spec.ts` en el equipo del usuario; aceptar visualmente la Entrega A antes de avanzar con movimiento/copia. No fusionar esta rama aún.
 - [ ] **Después:** escala/rotación física de objetos, ajustes de dimensiones independientes del raster y exportación/importación JSON versionada.
 
 - [ ] Herramientas posteriores: selección de objetos/píxeles, copiar/duplicar, desplazar y escala física independiente del motivo; todavía no hay editor de vectores ni lienzo de tamaño libre.
