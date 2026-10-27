@@ -359,6 +359,7 @@ test('la selección conserva coordenadas con zoom y scroll y se cancela con Esca
 
 
 test('regiones antiguas: copia, duplica, corta, pega y deshace sin afectar otros píxeles', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
   await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
   const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
   await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
@@ -367,14 +368,18 @@ test('regiones antiguas: copia, duplica, corta, pega y deshace sin afectar otros
   const status = editor.locator('.decor-paint-status');
   await editor.getByRole('combobox', { name: 'Resolución del lienzo' }).selectOption('96');
   const canvas = editor.locator('canvas');
-  const rect = await canvas.boundingBox();
-  expect(rect).not.toBeNull();
-  const pos = (x: number, y: number) =>
-    ({ x: rect!.x + rect!.width * x, y: rect!.y + rect!.height * y });
   const drag = async (startX: number, startY: number, endX: number, endY: number) => {
-    await page.mouse.move(pos(startX, startY).x, pos(startX, startY).y);
+    await canvas.scrollIntoViewIfNeeded();
+    // Controls below the bitmap may have scrolled the dialog since the last drag.
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    const pos = (x: number, y: number) => ({
+      x: bounds!.x + bounds!.width * x, y: bounds!.y + bounds!.height * y,
+    });
+    const from = pos(startX, startY), to = pos(endX, endY);
+    await page.mouse.move(from.x, from.y);
     await page.mouse.down();
-    await page.mouse.move(pos(endX, endY).x, pos(endX, endY).y, { steps: 7 });
+    await page.mouse.move(to.x, to.y, { steps: 7 });
     await page.mouse.up();
   };
   const painted = async () => Number((await status.innerText()).match(/(\d+) pintados/)?.[1] ?? -1);
@@ -410,16 +415,18 @@ test('regiones antiguas: copia, duplica, corta, pega y deshace sin afectar otros
 });
 
 test('panorama: arrastrar dentro de selección mueve tinta y un solo deshacer revierte el traslado', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
   await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
   const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
   await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
   const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
   const canvas = editor.locator('canvas');
-  const bounds = await canvas.boundingBox();
-  expect(bounds).not.toBeNull();
-  const position = (x: number, y: number) =>
-    ({ x: bounds!.x + bounds!.width * x, y: bounds!.y + bounds!.height * y });
   const drag = async (a: number, b: number, c: number, d: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    const position = (x: number, y: number) =>
+      ({ x: bounds!.x + bounds!.width * x, y: bounds!.y + bounds!.height * y });
     const from = position(a, b), to = position(c, d);
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
