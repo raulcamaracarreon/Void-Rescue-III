@@ -7,6 +7,29 @@ export type DecorDrawTool = 'brush' | 'eraser' | 'line' | 'rectangle' | 'circle'
 export interface DrawOptions { size?: number; filled?: boolean }
 export interface PixelPoint { x: number; y: number }
 
+/** Pixel-inclusive rectangular selection, independent of mask data and drawing history. */
+export interface DecorSelection { x: number; y: number; width: number; height: number }
+
+/** Normalize reverse drags and clamp them to the actual bitmap bounds.
+ * A click selects one pixel; invalid dimensions/coordinates cannot create selections.
+ */
+export function normalizeDecorSelection(from: PixelPoint, to: PixelPoint,
+  bitmapWidth: number, bitmapHeight: number): DecorSelection | null {
+  if (!Number.isInteger(bitmapWidth) || !Number.isInteger(bitmapHeight)
+    || bitmapWidth < 1 || bitmapHeight < 1
+    || ![from.x, from.y, to.x, to.y].every(Number.isFinite)) return null;
+  const x0 = Math.max(0, Math.min(bitmapWidth - 1, Math.floor(from.x)));
+  const y0 = Math.max(0, Math.min(bitmapHeight - 1, Math.floor(from.y)));
+  const x1 = Math.max(0, Math.min(bitmapWidth - 1, Math.floor(to.x)));
+  const y1 = Math.max(0, Math.min(bitmapHeight - 1, Math.floor(to.y)));
+  return {
+    x: Math.min(x0, x1),
+    y: Math.min(y0, y1),
+    width: Math.abs(x1 - x0) + 1,
+    height: Math.abs(y1 - y0) + 1,
+  };
+}
+
 /** Pure, deterministic bitmap editing with supported 3:1 monochrome masks. */
 export function drawDecorPixels(source: DecorBitmap, tool: DecorDrawTool,
   from: PixelPoint, to: PixelPoint, options: DrawOptions = {}): DecorBitmap {
