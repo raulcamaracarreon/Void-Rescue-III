@@ -60,7 +60,7 @@ El usuario ejecutó build, Vitest y los 16 E2E de Paint/selección en la rama `f
 1. El localizador `getByRole('button', { name: 'Cancelar' })` coincide con los botones «Cancelar» y «Cancelar selección». Corrección: usar `exact: true` para el botón de cerrar.
 2. Después de usar un control de zoom, Escape no quitaba la selección (el navegador podía consumir la pulsación antes de disparar `dialog.cancel`). Corrección: manejar Escape en la fase de captura del `keydown` del diálogo; primera pulsación cancela selección, segunda cierra el editor. La prueba además suponía erróneamente que deshacer estaría deshabilitado, aunque cambiar resolución de 2048×256 a 96×32 genera legítimamente un paso; ahora comprueba la conservación de ese paso.
 
-**Parches subidos a GitHub, nueva ejecución local todavía pendiente.** Validar exclusivamente los cuatro casos afectados:
+**Parches validados en el equipo del usuario el 26/10/2026:** `npx playwright test tests/e2e/decor-paint.spec.ts -g "cancelar no cambia|la selección conserva"`: **4/4 pruebas aprobadas (9.3 s)**, dos en Chromium automático y dos en WebGL2. La sincronización `git -c gc.auto=0 fetch origin` y `git merge --ff-only origin/feat/phase3-selection-tools` también fue correcta. Comandos ejecutados (registro histórico):
 
 ```powershell
 cd "E:\Proyectos\JUEGOS\VoidRescue-III"
@@ -73,7 +73,7 @@ No volver a ejecutar toda la batería salvo que esta corrección provoque otro d
 
 ## Entrega A de selección rectangular — rama aislada (26/10/2026)
 
-**Estado:** implementada en GitHub en `feat/phase3-selection-tools`, **pendiente de ejecutar build y pruebas locales**. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
+**Estado:** implementada en GitHub en `feat/phase3-selection-tools`; **compilación y unitarias aprobadas en la primera ejecución, 12/16 E2E generales inicialmente y las 4/4 regresiones corregidas después aprobadas**. Falta aceptación visual del usuario; no se ha repetido el conjunto de 16 pruebas después del parche. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
 
 Para revisar esta primera entrega:
 
