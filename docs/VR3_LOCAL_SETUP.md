@@ -97,6 +97,14 @@ En el editor Paint, elegir «Seleccionar región», arrastrar desde cualquier es
 - Archivos locales no rastreados `MD_Continuidad/` y capturas en `docs/screenshots/` deben conservarse al cambiar ramas. No ejecutar `git clean` sobre ellos.
 - Si reaparecen avisos de mantenimiento de Git `Unlink ... .idx/.pack failed`, no borrar packs manualmente; no bloquean por sí mismos el resultado de Playwright.
 
+## Corte actual — aceptación de selección y continuidad (26/10/2026)
+
+- **Entrega A:** selección rectangular, zoom/scroll, cancelación y delimitación: pruebas focalizadas **4/4** tras el primer parche y aceptación visual del usuario.
+- **Entrega B:** mover, duplicar, cortar, copiar, pegar, borrar y deshacer/rehacer. La revisión anterior pasó **20/20 E2E** en Chromium automático/WebGL2 (44.7 s), pero el usuario descubrió un defecto de duplicación superpuesta. Se corrigió mediante una **copia flotante independiente** que preserva el fondo original; el usuario acaba de confirmar visualmente que **las herramientas ahora funcionan correctamente**.
+- **Límite de evidencia:** no se compartió aún la salida de compilación/Vitest ni de las nuevas pruebas focalizadas después del último parche. No atribuir las 20 pruebas históricas a la versión corregida. El control está acotado a la nueva funcionalidad y sirve para la futura integración.
+- **Git:** `main` permanece en el incremento Paint previamente fusionado por PR #1; `feat/phase3-selection-tools` contiene las entregas A+B y **no se ha fusionado**. No iniciar pipelines ni Pages.
+- **Ruta futura:** decidir si VR3 ofrecerá variantes de vehículo en una misma partida o modos/episodios; **fase 4:** contrato de vehículos y primer helicóptero, preservando nave y reglas actuales; **fase 5:** nuevas amenazas, entidades y ambientes. Exportación/importación JSON, transformación/escalado y QA visual pendiente de fases 1/2/3 quedan registradas, no declaradas completadas.
+
 ## Entrega B — manipulación de regiones (26/10/2026)
 
 **Estado:** la Entrega B completó las pruebas anteriores con **20/20 E2E aprobadas en 44.7 s** (Chromium automático y WebGL2). Sin embargo, la revisión manual detectó un defecto de duplicación superpuesta que motivó una corrección posterior, aún **pendiente de validación local**. La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
