@@ -101,13 +101,13 @@ En el editor Paint, elegir «Seleccionar región», arrastrar desde cualquier es
 
 - **Entrega A:** selección rectangular, zoom/scroll, cancelación y delimitación: pruebas focalizadas **4/4** tras el primer parche y aceptación visual del usuario.
 - **Entrega B:** mover, duplicar, cortar, copiar, pegar, borrar y deshacer/rehacer. La revisión anterior pasó **20/20 E2E** en Chromium automático/WebGL2 (44.7 s), pero el usuario descubrió un defecto de duplicación superpuesta. Se corrigió mediante una **copia flotante independiente** que preserva el fondo original; el usuario acaba de confirmar visualmente que **las herramientas ahora funcionan correctamente**.
-- **Límite de evidencia:** no se compartió aún la salida de compilación/Vitest ni de las nuevas pruebas focalizadas después del último parche. No atribuir las 20 pruebas históricas a la versión corregida. El control está acotado a la nueva funcionalidad y sirve para la futura integración.
-- **Git:** `main` permanece en el incremento Paint previamente fusionado por PR #1; `feat/phase3-selection-tools` contiene las entregas A+B y **no se ha fusionado**. No iniciar pipelines ni Pages.
+- **Validación final tras corregir copias flotantes:** build aprobado, **16/16** unitarias específicas y **8/8** E2E focalizadas (20.3 s) en ambos backends. Los 20/20 E2E históricos (44.7 s) son anteriores al parche y no se presentarán como reejecutados.
+- **Git:** fusión de la entrega A+B a `main` **autorizada expresamente** por el usuario mediante Pull Request, después de aceptación manual y pruebas. Preservar el historial, sin activar workflows ni publicar Pages.
 - **Ruta futura:** decidir si VR3 ofrecerá variantes de vehículo en una misma partida o modos/episodios; **fase 4:** contrato de vehículos y primer helicóptero, preservando nave y reglas actuales; **fase 5:** nuevas amenazas, entidades y ambientes. Exportación/importación JSON, transformación/escalado y QA visual pendiente de fases 1/2/3 quedan registradas, no declaradas completadas.
 
 ## Entrega B — manipulación de regiones (26/10/2026)
 
-**Estado:** la Entrega B completó las pruebas anteriores con **20/20 E2E aprobadas en 44.7 s** (Chromium automático y WebGL2). Sin embargo, la revisión manual detectó un defecto de duplicación superpuesta que motivó una corrección posterior, aún **pendiente de validación local**. La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
+**Estado:** la Entrega B completó las pruebas anteriores con **20/20 E2E aprobadas en 44.7 s** (Chromium automático y WebGL2). Sin embargo, la revisión manual detectó un defecto de duplicación superpuesta que motivó una corrección posterior, **aprobada en build, 16/16 unitarias y 8/8 E2E focalizadas**. La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
 
 La barra de operaciones **Región** aparece debajo del lienzo. Selecciona con la herramienta «Seleccionar región» y utiliza **Copiar, Cortar, Pegar, Duplicar o Borrar selección**. Pegar y duplicar desplazan por defecto la región 16 píxeles a la derecha y 8 hacia abajo (sin salirse del lienzo); el color vacío del fragmento se considera transparente. Para **mover** un fragmento, arrastra desde dentro del rectángulo amarillo hacia la nueva posición; también hay botones de flechas para cambios de un píxel. Cada movimiento por arrastre y cada operación de edición debe generar como máximo un paso de deshacer. Copiar y cancelar selección no modifican el bitmap. El portapapeles es interno y se descarta al cambiar de plano/abrir sesión nueva. No usa portapapeles del sistema.
 
@@ -124,7 +124,7 @@ npx playwright test tests/e2e/decor-paint.spec.ts
 
 **Corrección de copias superpuestas (26/10/2026):** antes, «Duplicar» pegaba inmediatamente la máscara monocroma en el bitmap y el siguiente arrastre movía el rectángulo ya fusionado, incluyendo la tinta original. El editor ahora mantiene la copia como **selección flotante** (bitmap de fondo previo + fragmento binario + posición). Al desplazarla restaura la zona que tenía debajo, incluso si la copia se solapó con el original. Deshacer/rehacer conservan ese estado. La copia se incorpora definitivamente cuando se cancela la selección, se cambia de herramienta o se aplica el dibujo. En el estado del editor aparece «copia flotante» mientras es independiente. No se añade persistencia de capas ni se modifica el formato de los paisajes.
 
-**Pruebas nuevas pendientes tras el parche** (el conjunto anterior ya pasó):
+**Pruebas del parche ya aprobadas** (comando histórico; no repetir sin nuevos cambios):
 
 ```powershell
 cd "E:\Proyectos\JUEGOS\VoidRescue-III"
@@ -135,4 +135,4 @@ npx vitest run tests/unit/decor-paint.test.ts
 npx playwright test tests/e2e/decor-paint.spec.ts -g "duplicado superpuesto|independencia del duplicado flotante|regiones antiguas|panorama: arrastrar"
 ```
 
-Playwright ejecutará **8 casos focalizados** (cuatro escenarios por backend). Primero confirmar pruebas y después revisar visualmente duplicación con un original por debajo. Si aparece un fallo, conservar la salida. **Las 20 pruebas aprobadas pertenecen a la versión anterior a esta corrección**, no se deben atribuir al nuevo parche.
+Playwright aprobó **8/8 casos focalizados en 20.3 s** (cuatro escenarios por backend); el usuario confirmó visualmente que la copia ya no arrastra el original. Las 20 E2E generales corresponden a la versión anterior.
