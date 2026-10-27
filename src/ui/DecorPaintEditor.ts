@@ -42,7 +42,7 @@ export class DecorPaintEditor {
     this.dialog.setAttribute('aria-label', 'Editor de dibujo de plano');
     this.dialog.innerHTML = `
       <h2 class="decor-paint-title">Editor de siluetas</h2>
-      <p class="landscape-help">Panorama de hasta 400 unidades de ancho: el juego repite el motivo solo al finalizarlo. Selecciona zoom para detallar; desplázate horizontalmente por el lienzo. El dibujo no genera colisiones.</p>
+      <p class="landscape-help">Panorama de hasta 400 unidades de ancho. Para manipular píxeles, elige «Seleccionar región»: arrastra desde fuera para seleccionar o desde dentro del recuadro para moverlo. Las acciones de región están debajo del lienzo; cada edición se puede deshacer. Los ceros son transparentes al pegar. El dibujo no genera colisiones.</p>
       <div class="decor-paint-toolbar">
         <label>Resolución del lienzo
           <select class="decor-paint-resolution" aria-label="Resolución del lienzo">
@@ -84,6 +84,16 @@ export class DecorPaintEditor {
         <button type="button" data-paint="zoom-in" aria-label="Acercar lienzo">+</button>
         <button type="button" data-paint="polygon-close" disabled>Cerrar polígono</button>
         <button type="button" data-paint="selection-cancel" disabled>Cancelar selección</button>
+
+        <button type="button" data-paint="undo">Deshacer</button>
+        <button type="button" data-paint="redo">Rehacer</button>
+        <button type="button" data-paint="clear">Limpiar</button>
+      </div>
+      <div class="decor-paint-viewport" role="region" aria-label="Área desplazable del dibujo" tabindex="0">
+        <canvas class="decor-paint-canvas" width="2048" height="256" aria-label="Lienzo de dibujo de silueta" tabindex="0"></canvas>
+      </div>
+      <div class="decor-paint-selection-toolbar" role="group" aria-label="Operaciones de selección">
+        <span class="decor-paint-selection-label">Región</span>
         <button type="button" data-paint="selection-copy" disabled>Copiar</button>
         <button type="button" data-paint="selection-cut" disabled>Cortar</button>
         <button type="button" data-paint="selection-paste" disabled>Pegar</button>
@@ -93,12 +103,6 @@ export class DecorPaintEditor {
         <button type="button" data-paint="selection-up" aria-label="Mover selección arriba" disabled>↑</button>
         <button type="button" data-paint="selection-down" aria-label="Mover selección abajo" disabled>↓</button>
         <button type="button" data-paint="selection-right" aria-label="Mover selección a la derecha" disabled>→</button>
-        <button type="button" data-paint="undo">Deshacer</button>
-        <button type="button" data-paint="redo">Rehacer</button>
-        <button type="button" data-paint="clear">Limpiar</button>
-      </div>
-      <div class="decor-paint-viewport" role="region" aria-label="Área desplazable del dibujo" tabindex="0">
-        <canvas class="decor-paint-canvas" width="2048" height="256" aria-label="Lienzo de dibujo de silueta" tabindex="0"></canvas>
       </div>
       <p class="decor-paint-status" role="status"></p>
       <div class="decor-paint-buttons">
