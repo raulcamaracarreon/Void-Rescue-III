@@ -76,19 +76,18 @@ export function blankDecorBitmap(width: number = DECOR_BITMAP_WIDTH): DecorBitma
     Array.from({ length: decorBitmapHeight(safeWidth) }, () => '0'.repeat(safeWidth)));
 }
 export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
-  const fallback = blankDecorBitmap();
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return blankDecorBitmap();
   const v = value as Record<string, unknown>;
-  if (!isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)) return fallback;
+  if (!isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)) return blankDecorBitmap();
   const width = v.width;
   const height = decorBitmapHeight(width);
   if (v.version === 2) {
     const length = Math.ceil(width * height / 8);
     if (typeof v.packed !== 'string' || v.packed.length !== Math.ceil(length / 3) * 4
-      || !/^[A-Za-z0-9+/]*={0,2}$/.test(v.packed)) return fallback;
+      || !/^[A-Za-z0-9+/]*={0,2}$/.test(v.packed)) return blankDecorBitmap();
     try {
       const binary = atob(v.packed);
-      if (binary.length !== length) return fallback;
+      if (binary.length !== length) return blankDecorBitmap();
       const rows: string[] = [];
       for (let y = 0; y < height; y++) {
         let line = '';
@@ -100,10 +99,10 @@ export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
       }
       return bitmapWithPackedSerialization(width, rows);
     } catch {
-      return fallback;
+      return blankDecorBitmap();
     }
   }
-  if (v.version !== 1 || !Array.isArray(v.rows) || v.rows.length !== height) return fallback;
+  if (v.version !== 1 || !Array.isArray(v.rows) || v.rows.length !== height) return blankDecorBitmap();
   return bitmapWithPackedSerialization(width,
     v.rows.map(row => typeof row === 'string' && row.length === width
       && /^[01]+$/.test(row) ? row : '0'.repeat(width)));
