@@ -6,7 +6,7 @@ import {
   DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences,
   sanitizeDecorBitmap, sanitizeLandscapePreferences,
 } from '../../src/landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
+import { decorInkCount, drawDecorPixels, drawDecorPolygon, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
 import { FOREGROUND_DEPTH, MIDGROUND_DEPTH, ForegroundDecor, drawingMotifWidth,
   decorSpanWidth } from '../../src/render/ForegroundDecor';
 
@@ -21,12 +21,12 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(decorInkCount(sanitizeDecorBitmap(bad))).toBe(0);
     expect(sanitizeDecorBitmap({ ...empty, width: 1000 })).toEqual(empty);
     expect(sanitizeDecorBitmap({ ...empty, rows: ['1'] })).toEqual(empty);
-    expect(empty.width).toBe(288);
-    expect(empty.height).toBe(96);
+    expect(empty.width).toBe(2048);
+    expect(empty.height).toBe(256);
     for (const width of DECOR_BITMAP_WIDTHS) {
       const mask = blankDecorBitmap(width);
       expect(sanitizeDecorBitmap(mask)).toEqual(mask);
-      expect(mask.height).toBe(width / 3);
+      expect(mask.height).toBe(width <= 384 ? width / 3 : width / 8);
     }
     const old = blankDecorBitmap(96);
     old.rows[3] = '1' + '0'.repeat(95);
@@ -83,7 +83,7 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     for (const width of DECOR_BITMAP_WIDTHS) {
       const resized = resizeDecorBitmap(painted, width);
       expect(resized.width).toBe(width);
-      expect(resized.height).toBe(width / 3);
+      expect(resized.height).toBe(width <= 384 ? width / 3 : width / 8);
       expect(decorInkCount(resized)).toBeGreaterThan(0);
       expect(sanitizeDecorBitmap(resized)).toEqual(resized);
     }
@@ -96,8 +96,67 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(drawingMotifWidth(high)).toBe(150);
   });
 
+
+  it('guarda máscaras grandes en formato binario compacto y recupera filas idénticas', () => {
+    const canvas = drawDecorPixels(blankDecorBitmap(2048), 'rectangle',
+      { x: 130, y: 35 }, { x: 500, y: 160 }, { filled: true });
+    const json = JSON.stringify(sanitizeDecorBitmap(canvas));
+    const serialized = JSON.parse(json);
+    expect(serialized.version).toBe(2);
+    expect(serialized.width).toBe(2048);
+    expect(json.length).toBeLessThan(100000); // 2048x256 = 524,288 raw characters
+    const recovered = sanitizeDecorBitmap(serialized);
+    expect(recovered.rows).toEqual(canvas.rows);
+    expect(decorInkCount(recovered)).toBeGreaterThan(10000);
+    expect(sanitizeDecorBitmap({ ...serialized, packed: 'malformed' }).rows.join(''))
+      .not.toContain('1');
+    const legacy = drawDecorPixels(blankDecorBitmap(96), 'brush',
+      { x: 5, y: 8 }, { x: 20, y: 8 });
+    expect(sanitizeDecorBitmap(legacy).rows).toEqual(legacy.rows);
+  });
+
+  it('pinta círculos, triángulos, polígonos rellenos y grosores configurables', () => {
+    const blank = blankDecorBitmap(512);
+    const thin = drawDecorPixels(blank, 'brush', { x: 24, y: 23 },
+      { x: 24, y: 23 }, { size: 1 });
+    const thick = drawDecorPixels(blank, 'brush', { x: 24, y: 23 },
+      { x: 24, y: 23 }, { size: 9 });
+    expect(decorInkCount(thin)).toBe(1);
+    expect(decorInkCount(thick)).toBe(81);
+    const erased = drawDecorPixels(thick, 'eraser', { x: 24, y: 23 },
+      { x: 24, y: 23 }, { size: 9 });
+    expect(decorInkCount(erased)).toBe(0);
+    const circle = drawDecorPixels(blank, 'circle', { x: 5, y: 5 },
+      { x: 60, y: 50 }, { filled: true });
+    expect(circle.rows[28]![32]).toBe('1');
+    expect(circle.rows[0]![0]).toBe('0');
+    const triangle = drawDecorPixels(blank, 'triangle', { x: 70, y: 5 },
+      { x: 130, y: 55 }, { filled: true });
+    expect(triangle.rows[45]![100]).toBe('1');
+    const polygon = drawDecorPolygon(blank, [
+      { x: 150, y: 5 }, { x: 230, y: 5 }, { x: 245, y: 52 }, { x: 150, y: 52 },
+    ], { filled: true });
+    expect(polygon.rows[20]![200]).toBe('1');
+    expect(polygon.rows[60]![200]).toBe('0');
+    expect(drawDecorPolygon(blank, [{ x: 1, y: 1 }], { filled: true })).toEqual(blank);
+  });
+
+  it('usa panoramas 8:1 con más de una pantalla de ancho, sin estirar las siluetas', () => {
+    const wide = blankDecorBitmap(2048);
+    const render = new ForegroundDecor();
+    const bitmap = drawDecorPixels(wide, 'line', { x: 10, y: 20 },
+      { x: 600, y: 100 }, { size: 5 });
+    expect(drawingMotifWidth(bitmap)).toBe(400);
+    render.rebuild({ ...DEFAULT_FOREGROUND, kind: 'drawing', enabled: true,
+      bitmap, spanPercent: 100 }, 8042, 9, 1);
+    const copy = render.group.children[1] as Group;
+    expect(copy.children).toHaveLength(6); // 2400 / 400 = 6
+    expect(copy.children.map(child => child.position.x)).toEqual([0, 400, 800, 1200, 1600, 2000]);
+    render.dispose();
+  });
+
   it('proyecta el dibujo en ambos planos y deja fuera los píxeles transparentes', () => {
-    const bitmap = drawDecorPixels(blankDecorBitmap(), 'rectangle',
+    const bitmap = drawDecorPixels(blankDecorBitmap(288), 'rectangle',
       { x: 10, y: 10 }, { x: 20, y: 20 });
     for (const [depth, defaults] of [
       [FOREGROUND_DEPTH, DEFAULT_FOREGROUND], [MIDGROUND_DEPTH, DEFAULT_MIDGROUND],
