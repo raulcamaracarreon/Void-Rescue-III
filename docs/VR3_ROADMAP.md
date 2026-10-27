@@ -71,7 +71,7 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] Editor de trazos, polígonos, siluetas y objetos individuales: fase 3. Por ahora «editable» significa controles de motivo, color, longitud, opacidad y paralaje por plano.
 - **Aceptación pendiente:** probar que activar y desactivar las rejas/árboles no altera impactos, rescates ni avance de oleada en una partida real.
 
-### 3. Editor de elementos y exportación (iniciado, implementación pendiente de pruebas)
+### 3. Editor de elementos y exportación (primer incremento con pruebas automatizadas aprobadas)
 
 **Primera entrega en `feat/phase3-paint-editor`:**
 - [x] Opacidad de ambos planos ampliada de 85 % a **100 %**, con validación y prueba explícita.
@@ -80,9 +80,10 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] Geometría visual 2.5D a partir de píxeles, con color/opacidad/paralaje existentes; sin interacción con colisiones.
 - [x] **Corrección de repetición (25/10/2026):** tamaño del motivo fijo en el mundo (150 × 50 unidades), repetición horizontal dentro de `spanPercent`, recorte geométrico únicamente de la última copia. Geometría compartida entre repeticiones y las tres copias del mundo; no se estira la imagen.
 - [x] Selector de cuatro resoluciones con **288 × 96 por defecto**, redimensionado vecino más cercano para dibujos existentes y cambios de resolución reversibles en el historial. Sin migraciones destructivas de paisajes guardados.
-- [x] Pruebas de tamaños, compatibilidad, mosaicos geométricos, recorte de borde y cambios de resolución en editor añadidas; **pendientes de ejecutar**.
+- [x] Pruebas de tamaños, compatibilidad, mosaicos geométricos, recorte de borde y cambios de resolución en editor añadidas y **aprobadas localmente** (26/10/2026).
 - [x] Saneamiento acotado de máscaras y copia profunda entre paisajes; tests unitarios + Playwright añadidos.
-- [ ] Ejecutar `npm run build`, `npm run test` y E2E en el equipo del usuario, revisar dibujo y persistencia real y ambos backends.
+- [x] **Validación local reportada por el usuario (26/10/2026):** `npm run build` correcto (TypeScript y Vite); `npm run test`: 14 archivos y **131/131 pruebas** aprobadas; `npx playwright test tests/e2e/decor-paint.spec.ts`: **6/6 pruebas** aprobadas en `chromium-auto` y `chromium-webgl2`, incluyendo resolución predeterminada 288×96, cambio de resolución, cancelación, deshacer/rehacer, opacidad 100 %, persistencia y dos planos.
+- [ ] Inspección visual manual en una partida: repetición sin estiramiento, unión entre motivos, recorte del último mosaico, paralaje y oclusión, al 100 % y 23 % de longitud lateral. Las pruebas automatizadas no sustituyen este paso.
 - [ ] Herramientas posteriores: polígono, dibujo de figuras compuestas, selección de objetos/píxeles, copiar/duplicar, desplazar y escala física independiente del motivo. El lienzo ya permite resoluciones acotadas, pero sigue pendiente controlar su tamaño libre.
 - [ ] Exportación e importación JSON versionada y validada, separada de nombres HTML y datos ejecutables.
 - [ ] Validar visualmente edición en dos planos, mundo circular, transparencia 100 %, opacidad, gradiente normal/inverso y restauración por oleada.
