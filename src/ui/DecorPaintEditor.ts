@@ -226,10 +226,20 @@ export class DecorPaintEditor {
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="cancel"]')!.addEventListener('click', () => this.close());
     this.dialog.addEventListener('cancel', event => {
       event.preventDefault();
-      // Escape deselects before it dismisses the drawing dialog.
+      // Native dialog cancellation (for example, platform back button).
       if (this.selection) this.cancelSelection();
       else this.close();
     });
+    // Handle Escape in capture phase: native <select> controls may consume the
+    // key without dispatching dialog.cancel after a zoom/resolution change.
+    // Explicitly handle the first Escape as deselect and the next as close.
+    this.dialog.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || event.ctrlKey || event.altKey || event.metaKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.selection) this.cancelSelection();
+      else this.close();
+    }, { capture: true });
     this.dialog.addEventListener('keydown', event => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       if (event.key.toLowerCase() === 'z') {
