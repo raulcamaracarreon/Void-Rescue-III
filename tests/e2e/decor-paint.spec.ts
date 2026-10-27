@@ -319,6 +319,9 @@ test('la selección conserva coordenadas con zoom y scroll y se cancela con Esca
   await resolution.selectOption('96');
   await tool.selectOption('select');
   await zoom.selectOption('4');
+  // The dialog itself scrolls on short screens; first bring the canvas region
+  // into view, then scroll inside the panorama, not the outer modal.
+  await viewport.scrollIntoViewIfNeeded();
 
   const scroll = await viewport.evaluate(node => {
     node.scrollLeft = Math.round(node.scrollWidth * 0.43);
