@@ -81,15 +81,16 @@ export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
   const v = value as Record<string, unknown>;
   if (!isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)) return fallback;
   const width = v.width;
+  const height = decorBitmapHeight(width);
   if (v.version === 2) {
-    const length = Math.ceil(width * v.height / 8);
+    const length = Math.ceil(width * height / 8);
     if (typeof v.packed !== 'string' || v.packed.length !== Math.ceil(length / 3) * 4
       || !/^[A-Za-z0-9+/]*={0,2}$/.test(v.packed)) return fallback;
     try {
       const binary = atob(v.packed);
       if (binary.length !== length) return fallback;
       const rows: string[] = [];
-      for (let y = 0; y < v.height; y++) {
+      for (let y = 0; y < height; y++) {
         let line = '';
         for (let x = 0; x < width; x++) {
           const index = y * width + x;
@@ -102,7 +103,7 @@ export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
       return fallback;
     }
   }
-  if (v.version !== 1 || !Array.isArray(v.rows) || v.rows.length !== v.height) return fallback;
+  if (v.version !== 1 || !Array.isArray(v.rows) || v.rows.length !== height) return fallback;
   return bitmapWithPackedSerialization(width,
     v.rows.map(row => typeof row === 'string' && row.length === width
       && /^[01]+$/.test(row) ? row : '0'.repeat(width)));
