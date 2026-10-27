@@ -73,7 +73,7 @@ No volver a ejecutar toda la batería salvo que esta corrección provoque otro d
 
 ## Entrega A de selección rectangular — rama aislada (26/10/2026)
 
-**Estado:** implementada en GitHub en `feat/phase3-selection-tools`; **compilación y unitarias aprobadas en la primera ejecución, 12/16 E2E generales inicialmente y las 4/4 regresiones corregidas después aprobadas**. Falta aceptación visual del usuario; no se ha repetido el conjunto de 16 pruebas después del parche. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
+**Estado:** implementada en GitHub en `feat/phase3-selection-tools`; **compilación y unitarias aprobadas en la primera ejecución, 12/16 E2E generales inicialmente y las 4/4 regresiones corregidas después aprobadas**. El usuario **aceptó visualmente la Entrega A el 26/10/2026** («ok funciona conforme lo esperado»). La batería completa de 16 no se repitió tras el parche, pero los cuatro casos afectados sí quedaron aprobados. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
 
 Para revisar esta primera entrega:
 
@@ -96,3 +96,22 @@ En el editor Paint, elegir «Seleccionar región», arrastrar desde cualquier es
 - Siguiente incremento en rama aislada: herramienta de selección rectangular de píxeles, mover, copiar/pegar, duplicar y borrar selecciones, con historial reversible; después escalar/rotar e importar/exportar JSON versionado.
 - Archivos locales no rastreados `MD_Continuidad/` y capturas en `docs/screenshots/` deben conservarse al cambiar ramas. No ejecutar `git clean` sobre ellos.
 - Si reaparecen avisos de mantenimiento de Git `Unlink ... .idx/.pack failed`, no borrar packs manualmente; no bloquean por sí mismos el resultado de Playwright.
+
+## Entrega B — manipulación de regiones (26/10/2026)
+
+**Estado: implementación subida a `feat/phase3-selection-tools`, todavía pendiente de compilación y pruebas locales.** La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
+
+La barra de operaciones **Región** aparece debajo del lienzo. Selecciona con la herramienta «Seleccionar región» y utiliza **Copiar, Cortar, Pegar, Duplicar o Borrar selección**. Pegar y duplicar desplazan por defecto la región 16 píxeles a la derecha y 8 hacia abajo (sin salirse del lienzo); el color vacío del fragmento se considera transparente. Para **mover** un fragmento, arrastra desde dentro del rectángulo amarillo hacia la nueva posición; también hay botones de flechas para cambios de un píxel. Cada movimiento por arrastre y cada operación de edición debe generar como máximo un paso de deshacer. Copiar y cancelar selección no modifican el bitmap. El portapapeles es interno y se descarta al cambiar de plano/abrir sesión nueva. No usa portapapeles del sistema.
+
+**Validación nueva necesaria** (cambios funcionales desde las E2E ya aprobadas):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase3-selection-tools
+npm run build
+npx vitest run tests/unit/decor-paint.test.ts
+npx playwright test tests/e2e/decor-paint.spec.ts
+```
+
+No repetir las pruebas después sin nuevos cambios. Con esta expansión el archivo E2E contiene **10 escenarios por backend** (20 ejecuciones previstas); un resultado menor puede indicar que la rama local aún no está actualizada.
