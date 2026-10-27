@@ -86,22 +86,36 @@ export function decorInkCount(bitmap: DecorBitmap): number {
   return bitmap.rows.reduce((sum, line) => sum + [...line].filter(bit => bit === '1').length, 0);
 }
 
-/** Nearest-neighbor resizing preserves crisp 1-bit art across 3:1 and 8:1 formats.
- * A resolution switch adds an editor undo step, so accidental downsampling can
- * always be reverted without affecting the saved environment.
+/** Preserve physical aspect when converting between legacy 3:1 drawings and
+ * new 8:1 panoramas. Empty space is added on the right, and shorter converted
+ * art remains grounded at the bottom of the canvas. Upscaling is nearest-
+ * neighbor; downscaling retains any covered pixel so thin lines don't vanish.
  */
 export function resizeDecorBitmap(source: DecorBitmap, targetWidth: number): DecorBitmap {
   const original = sanitizeDecorBitmap(source);
   if (!isDecorBitmapWidth(targetWidth) || targetWidth === original.width) return original;
   const targetHeight = decorBitmapHeight(targetWidth);
+  const scale = Math.min(targetWidth / original.width, targetHeight / original.height);
+  const mappedWidth = Math.max(1, Math.min(targetWidth, Math.round(original.width * scale)));
+  const mappedHeight = Math.max(1, Math.min(targetHeight, Math.round(original.height * scale)));
+  const yOffset = targetHeight - mappedHeight;
   const rows: string[] = [];
+
   for (let y = 0; y < targetHeight; y++) {
-    const oldY = Math.min(original.height - 1, Math.floor(y * original.height / targetHeight));
-    const sourceRow = original.rows[oldY]!;
+    if (y < yOffset) { rows.push('0'.repeat(targetWidth)); continue; }
+    const sourceMinY = Math.floor((y - yOffset) * original.height / mappedHeight);
+    const sourceMaxY = Math.max(sourceMinY + 1,
+      Math.ceil((y - yOffset + 1) * original.height / mappedHeight));
     let row = '';
     for (let x = 0; x < targetWidth; x++) {
-      const oldX = Math.min(original.width - 1, Math.floor(x * original.width / targetWidth));
-      row += sourceRow[oldX]!;
+      if (x >= mappedWidth) { row += '0'.repeat(targetWidth - x); break; }
+      const sourceMinX = Math.floor(x * original.width / mappedWidth);
+      const sourceMaxX = Math.max(sourceMinX + 1, Math.ceil((x + 1) * original.width / mappedWidth));
+      let painted = false;
+      for (let sy = sourceMinY; sy < Math.min(original.height, sourceMaxY) && !painted; sy++)
+        for (let sx = sourceMinX; sx < Math.min(original.width, sourceMaxX); sx++)
+          if (original.rows[sy]![sx] === '1') { painted = true; break; }
+      row += painted ? '1' : '0';
     }
     rows.push(row);
   }
