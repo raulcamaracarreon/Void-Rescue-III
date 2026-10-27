@@ -115,6 +115,25 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(sanitizeDecorBitmap(legacy).rows).toEqual(legacy.rows);
   });
 
+  it('convierte arte antiguo a panorama sin deformar figuras ni perder líneas finas', () => {
+    const old = drawDecorPixels(blankDecorBitmap(96), 'rectangle',
+      { x: 10, y: 5 }, { x: 35, y: 25 }, { filled: true });
+    const panoramic = resizeDecorBitmap(old, 2048);
+    expect(panoramic.width).toBe(2048);
+    expect(panoramic.height).toBe(256);
+    // The old 3:1 motif occupies only 768 of 2048 columns; the rest is empty.
+    expect(panoramic.rows.every(row => row.slice(768).indexOf('1') < 0)).toBe(true);
+    expect(panoramic.rows[100]![160]).toBe('1');
+    expect(panoramic.rows[100]![900]).toBe('0');
+    const returned = resizeDecorBitmap(panoramic, 96);
+    expect(returned.width).toBe(96);
+    expect(returned.height).toBe(32);
+    expect(decorInkCount(returned)).toBeGreaterThan(0);
+    const thin = drawDecorPixels(blankDecorBitmap(2048), 'line',
+      { x: 50, y: 20 }, { x: 1900, y: 230 });
+    expect(decorInkCount(resizeDecorBitmap(thin, 96))).toBeGreaterThan(0);
+  });
+
   it('pinta círculos, triángulos, polígonos rellenos y grosores configurables', () => {
     const blank = blankDecorBitmap(512);
     const thin = drawDecorPixels(blank, 'brush', { x: 24, y: 23 },
