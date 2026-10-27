@@ -28,6 +28,14 @@ El mismo incremento permite opacidad máxima de **100 %** en ambos planos, inclu
 
 **Corrección de fase 3 (25/10/2026):** a partir de la prueba manual se resolvió el estiramiento horizontal y se amplió el lienzo. Cambios guardados en GitHub y pruebas nuevas añadidas, **validados por ejecución local de pruebas automatizadas el 26/10/2026; pendiente de revisión visual manual durante el vuelo**. El dibujo nuevo usa 288 × 96; los guardados antiguos de 96 × 32 mantienen intacta su resolución.
 
+### Ampliación panorámica y herramientas (26/10/2026)
+
+Para evitar la repetición prematura de figuras observada en la captura del juego, el editor ahora admite lienzos panorámicos **512×64, 1024×128 y 2048×256** (nuevo valor inicial). Sus motivos miden **400×50 unidades del mundo**, en lugar de 150×50 de los antiguos lienzos 3:1, y no se estiran. A 16:9, ese ancho supera el recorrido visible de una sola pantalla.
+
+Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar figuras, grosor del pincel 1–32 px y zoom 1–8×** con desplazamiento horizontal. El guardado convierte internamente las filas binarias a un bitset Base64 compacto (formato v2), con lectura compatible de los dibujos v1. El cambio de proporción al variar resolución conserva el tamaño de la figura agregando espacio vacío; no deforma el árbol viejo.
+
+**Implementado en GitHub, pendiente de validación con build, Vitest, Playwright y prueba visual del usuario.**
+
 **Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
 ## Qué funciona como base
