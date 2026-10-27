@@ -115,3 +115,73 @@
   .landscape-rotation-columns { grid-template-columns: 1fr; }
   .landscape-library .landscape-label { grid-template-columns: 1fr; }
 }
+
+/* Optional visual foreground layer: independent from terrain and collision systems. */
+.landscape-foreground {
+  margin: 1.2em 0; padding: .85em 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.landscape-foreground h3 {
+  font: 700 .95em var(--mono); color: #d8f2e8; letter-spacing: .05em; margin: .25em 0;
+}
+.landscape-foreground-controls {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6em;
+}
+.landscape-foreground-controls label {
+  display: flex; flex-direction: column; gap: .3em;
+  min-width: 0; font: .79em var(--mono); color: #b8d8cc;
+}
+.landscape-foreground-controls input,
+.landscape-foreground-controls select { width: 100%; min-width: 0; }
+.landscape-foreground-controls input[type=checkbox] { width: 1.3em; height: 1.3em; accent-color: #83dec1; }
+@media (max-width: 760px) {
+  .landscape-foreground-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.landscape-foreground-controls input[type=color]:disabled { opacity: .9; cursor: not-allowed; }
+.landscape-foreground-controls input[type=checkbox]:disabled { opacity: .35; }
+@media (min-width: 761px) and (max-width: 980px) {
+  .landscape-foreground-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+
+/* Phase 3 — simple pixel-silhouette Paint editor; does not alter collision meshes. */
+.decor-paint-open { justify-content: flex-start; margin: .35em 0 .65em; }
+.decor-paint-open button { border-color: #8bd1b9; }
+.decor-paint-dialog {
+  width: min(920px, 95vw); max-width: 95vw; max-height: 94dvh;
+  padding: 1.4em; overflow: auto; color: #d6efe9;
+}
+.decor-paint-dialog h2 { font-size: clamp(19px, 2vw, 28px); }
+.decor-paint-toolbar, .decor-paint-buttons {
+  display: flex; gap: .65em; align-items: end; flex-wrap: wrap; margin: .8em 0;
+}
+.decor-paint-toolbar label { display: flex; flex-direction: column; gap: .2em; }
+.decor-paint-toolbar select, .decor-paint-toolbar button,
+.decor-paint-buttons button {
+  font: .84em var(--mono); padding: .5em .7em;
+  background: #153336; color: #c4eee0; border: 1px solid #80bdad;
+}
+.decor-paint-buttons { justify-content: flex-end; }
+.decor-paint-buttons .primary { background: #285344; }
+.decor-paint-toolbar button:disabled { opacity: .32; }
+.decor-paint-viewport {
+  width: 100%; max-height: min(420px, 54dvh);
+  overflow: auto; overscroll-behavior: contain;
+  border: 1px solid #93d1be; background: #082024;
+}
+.decor-paint-canvas {
+  display: block; width: 100%; max-width: none; height: auto;
+  aspect-ratio: auto; border: 0;
+  background: #082024; image-rendering: pixelated;
+  touch-action: none; cursor: crosshair;
+}
+.decor-paint-toolbar input[type=range] { width: 102px; accent-color: #a4f5d6; }
+.decor-paint-toolbar input[type=checkbox] { accent-color: #a4f5d6; }
+.decor-paint-toolbar select { max-width: 175px; }
+.decor-paint-canvas:focus-visible { outline: 2px solid #e2fff0; outline-offset: 3px; }
+.decor-paint-status { font: .8em var(--mono); color: #afcbc6; }
+@media(max-width: 760px) {
+  .decor-paint-dialog { padding: .8em; }
+  .decor-paint-canvas { min-height: 145px; }
+}

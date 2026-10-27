@@ -2,7 +2,7 @@
 
 ## Identidad y alcance vigente
 
-Este árbol es el **prototipo VR3 v0.1.0**, inicialmente preparado desde Void Rescue II. La aplicación anterior se conserva intacta en el repositorio/ramas de su lanzamiento. VR3 todavía no está publicado ni ha pasado verificaciones locales.
+Este árbol es el **prototipo VR3 v0.1.0**, inicialmente preparado desde Void Rescue II. La aplicación anterior se conserva intacta en el repositorio/ramas de su lanzamiento. VR3 todavía no está publicado. El editor de rotación, dos capas decorativas y editor Paint fueron probados localmente; el usuario aceptó visualmente el editor de figuras el 26/10/2026. Aún falta completar la fase 3 (selección/transformación y exportación).
 
 Prioridad para los agentes que trabajen en la rama/proyecto VR3:
 
@@ -18,7 +18,7 @@ Antes de programar, examinar archivos reales y pruebas. No asumir nombres, tipos
 - Partir de la lógica de combate, rescate, simulación, colisiones, controles, cámara y oleadas existente en VR2.
 - Mejorar la experiencia de rotación de ambientes: disposición vertical en columnas, selección rápida de posición, arrastre y accesibilidad.
 - Diseñar capas visuales opcionales de primer plano (rejas, cercas, árboles, siluetas y otras); permitir oclusión visual sin convertirlas automáticamente en colisiones.
-- Desarrollar gradualmente herramientas de dibujo sencillas y configuraciones exportables.
+- Desarrollar gradualmente herramientas de dibujo y configuraciones exportables. El incremento Paint implementa panorama nuevo 2048×256, formatos antiguos 96×32 a 384×128, relleno de figuras, círculo, triángulo, polígonos, zoom y pincel configurable. Playwright: 10/10 E2E del editor y 2/2 pruebas focalizadas de círculo/triángulo aprobadas en ambos backends; el usuario confirmó funcionamiento manual. Quedan pendientes selección, copia, movimiento, transformación y exportación/importación JSON validada. No declarar completa la fase 3.
 - Agregar perfiles de vehículo (inicialmente helicóptero, después otros) y familias nuevas de enemigos (helicópteros, drones, aviones, defensas), pero no declarar que existen antes de implementarlos y probarlos.
 
 ## Arquitectura conservada

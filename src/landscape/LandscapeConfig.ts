@@ -23,6 +23,119 @@ export interface LandscapeLayer {
   detail: number;
 }
 
+export type ForegroundKind = 'trees' | 'fence' | 'grille' | 'buildings' | 'drawing';
+
+/** Legacy 3:1 masks are kept untouched. New panoramas use 8:1, allowing
+ * an entire screen or more between motif repeats at the reference camera size.
+ * 2048×256 is the default for new drawings; 4096×512 is intentionally excluded
+ * until storage and GPU limits for huge user libraries are addressed.
+ */
+export const DECOR_BITMAP_WIDTHS = [96, 192, 288, 384, 512, 1024, 2048] as const;
+export type DecorBitmapWidth = (typeof DECOR_BITMAP_WIDTHS)[number];
+export const DECOR_BITMAP_WIDTH = 2048;
+export const DECOR_BITMAP_HEIGHT = 256;
+export function isDecorBitmapWidth(value: unknown): value is DecorBitmapWidth {
+  return typeof value === 'number' && DECOR_BITMAP_WIDTHS.some(width => width === value);
+}
+export function decorBitmapHeight(width: number): number {
+  return width <= 384 ? width / 3 : width / 8;
+}
+export interface DecorBitmap {
+  version: 1;
+  width: number;
+  height: number;
+  rows: string[];
+}
+/** Compact on disk: 1-bit masks are serialized to a fixed-length bitset
+ * instead of 500 KB of literal zeroes/ones. The editor still works with v1 rows.
+ * The JSON v2 format is internal to VR3 preferences, not user-imported code.
+ */
+function bitmapWithPackedSerialization(width: number, rows: string[]): DecorBitmap {
+  const bitmap: DecorBitmap = { version: 1, width, height: decorBitmapHeight(width), rows };
+  Object.defineProperty(bitmap, 'toJSON', {
+    enumerable: false,
+    value: () => {
+      const bytes = new Uint8Array(Math.ceil(width * bitmap.height / 8));
+      let index = 0;
+      for (const row of bitmap.rows) {
+        for (let x = 0; x < width; x++, index++) {
+          if (row[x] === '1') bytes[index >> 3]! |= 1 << (7 - (index & 7));
+        }
+      }
+      let chars = '';
+      for (let i = 0; i < bytes.length; i += 8192)
+        chars += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      return { version: 2, width, height: bitmap.height, packed: btoa(chars) };
+    },
+  });
+  return bitmap;
+}
+export function blankDecorBitmap(width: number = DECOR_BITMAP_WIDTH): DecorBitmap {
+  const safeWidth = isDecorBitmapWidth(width) ? width : DECOR_BITMAP_WIDTH;
+  return bitmapWithPackedSerialization(safeWidth,
+    Array.from({ length: decorBitmapHeight(safeWidth) }, () => '0'.repeat(safeWidth)));
+}
+export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return blankDecorBitmap();
+  const v = value as Record<string, unknown>;
+  if (!isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)) return blankDecorBitmap();
+  const width = v.width;
+  const height = decorBitmapHeight(width);
+  if (v.version === 2) {
+    const length = Math.ceil(width * height / 8);
+    if (typeof v.packed !== 'string' || v.packed.length !== Math.ceil(length / 3) * 4
+      || !/^[A-Za-z0-9+/]*={0,2}$/.test(v.packed)) return blankDecorBitmap();
+    try {
+      const binary = atob(v.packed);
+      if (binary.length !== length) return blankDecorBitmap();
+      const rows: string[] = [];
+      for (let y = 0; y < height; y++) {
+        let line = '';
+        for (let x = 0; x < width; x++) {
+          const index = y * width + x;
+          line += (binary.charCodeAt(index >> 3) & (1 << (7 - (index & 7)))) ? '1' : '0';
+        }
+        rows.push(line);
+      }
+      return bitmapWithPackedSerialization(width, rows);
+    } catch {
+      return blankDecorBitmap();
+    }
+  }
+  if (v.version !== 1 || !Array.isArray(v.rows) || v.rows.length !== height) return blankDecorBitmap();
+  return bitmapWithPackedSerialization(width,
+    v.rows.map(row => typeof row === 'string' && row.length === width
+      && /^[01]+$/.test(row) ? row : '0'.repeat(width)));
+}
+
+/** Common configuration for both editable decorative depth planes. */
+export type DecorColorMode = 'manual' | 'gradient';
+export interface DecorLayerConfig {
+  enabled: boolean;
+  kind: ForegroundKind;
+  /** Manual swatch, preserved even when the automatic gradient is selected. */
+  color: string;
+  colorMode: DecorColorMode;
+  invertGradient: boolean;
+  opacity: number;
+  parallax: number;
+  /** Decorated portion of the wrapped world, in percent (5..100). Objects keep their size. */
+  spanPercent: number;
+  /** Raster silhouette is optional, so legacy and procedural environments stay compact. */
+  bitmap?: DecorBitmap;
+}
+/** Kept as an alias for existing foreground callers and tests. */
+export type ForegroundConfig = DecorLayerConfig;
+
+export const DEFAULT_FOREGROUND: Readonly<DecorLayerConfig> = Object.freeze({
+  enabled: false, kind: 'trees', color: '#172b29', colorMode: 'manual', invertGradient: false,
+  opacity: 0.48, parallax: 1.12, spanPercent: 100,
+});
+export const DEFAULT_MIDGROUND: Readonly<DecorLayerConfig> = Object.freeze({
+  enabled: false, kind: 'trees', color: '#304b42', colorMode: 'manual', invertGradient: false,
+  opacity: 0.62, parallax: 0.75, spanPercent: 100,
+});
+
 export interface LandscapeStyle {
   skyTop: string;
   skyBottom: string;
@@ -30,6 +143,8 @@ export interface LandscapeStyle {
   moon: boolean;
   seed: number;
   layers: LandscapeLayer[];
+  foreground?: DecorLayerConfig;
+  midground?: DecorLayerConfig;
   automatic?: AutomaticLandscape;
   advancedEdited?: boolean;
 }
@@ -128,6 +243,55 @@ export function mixLandscapeColors(sky: string, front: string, t: number): strin
   return '#' + components.join('');
 }
 
+/** Decorative colors are TWO NEW gradient steps beyond the closest background,
+ * not samples that duplicate an already-visible mountain/building layer.
+ *
+ * When auto-generated, the background palette reserves two of its original RGB
+ * steps for decor, keeping all requested colors within the user-selected gamut.
+ * The signed contrast is always darker toward the viewer; inverse is lighter.
+ * In the reverse direction we use half-step positions to avoid repeating an
+ * existing background color (notably the penultimate mountain).
+ *
+ * For advanced/custom palettes, use the actual last two visible layers as the
+ * source of the step. Never mutate the stored manual color or background colors.
+ */
+export function decorColorForStyle(style: LandscapeStyle, plane: 'foreground' | 'midground'): string {
+  const decor = style[plane] ?? (plane === 'foreground' ? DEFAULT_FOREGROUND : DEFAULT_MIDGROUND);
+  if (decor.colorMode !== 'gradient') return decor.color;
+  const nearest = style.layers.at(-1)?.color ?? style.automatic?.frontColor ?? style.skyBottom;
+  const previous = style.layers.at(-2)?.color ?? style.automatic?.skyColor ?? style.skyTop;
+  const rgb = (hex: string): number[] => [1, 3, 5].map(i => Number.parseInt(hex.slice(i, i + 2), 16));
+  const near = rgb(nearest);
+  const prev = rgb(previous);
+  const luminance = (channels: number[]): number =>
+    channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
+  // If contrast runs opposite to the original background gradient, offset
+  // the extrapolation beyond whole steps to avoid the penultimate layer.
+  const backgroundGetsDarker = luminance(near) < luminance(prev);
+  const distance = plane === 'midground' ? 1 : 2;
+  const sameDirection = decor.invertGradient ? !backgroundGetsDarker : backgroundGetsDarker;
+  const stepCount = sameDirection ? distance : distance + 0.5;
+  const direction = decor.invertGradient ? 1 : -1;
+  const auto = style.automatic;
+  // For an automatically rebuilt palette, the original two user-selected
+  // endpoints are strict bounds even if rounding makes a new step overshoot.
+  // Advanced hand-painted palettes are never constrained by unrelated stops.
+  const reservedAutoPalette = Boolean(auto && style.layers.length === auto.layerCount
+    && nearest === mixLandscapeColors(auto.skyColor, auto.frontColor,
+      auto.layerCount / (auto.layerCount + 2)));
+  const selectedStart = reservedAutoPalette ? rgb(auto!.skyColor) : [0, 0, 0];
+  const selectedEnd = reservedAutoPalette ? rgb(auto!.frontColor) : [255, 255, 255];
+  return '#' + near.map((component, i) => {
+    const delta = Math.abs(component - prev[i]!);
+    // A flat channel remains unchanged: no fictitious hue is introduced.
+    const lower = Math.min(selectedStart[i]!, selectedEnd[i]!);
+    const upper = Math.max(selectedStart[i]!, selectedEnd[i]!);
+    const extended = Math.max(lower, Math.min(upper,
+      Math.round(component + direction * delta * stepCount)));
+    return extended.toString(16).padStart(2, '0');
+  }).join('');
+}
+
 const AUTO_PRESETS: Record<LandscapePreset, AutomaticLandscape> = {
   night: { skyColor: '#020509', frontColor: '#17465a', layerCount: 6, composition: 'mountains' },
   city: { skyColor: '#1d2947', frontColor: '#0a142c', layerCount: 6, composition: 'mixed' },
@@ -148,6 +312,14 @@ export function copyLandscape(style: LandscapeStyle): LandscapeStyle {
   return {
     ...style,
     layers: style.layers.map(layer => ({ ...layer })),
+    ...(style.foreground ? { foreground: {
+      ...style.foreground,
+      ...(style.foreground.bitmap ? { bitmap: sanitizeDecorBitmap(style.foreground.bitmap) } : {}),
+    } } : {}),
+    ...(style.midground ? { midground: {
+      ...style.midground,
+      ...(style.midground.bitmap ? { bitmap: sanitizeDecorBitmap(style.midground.bitmap) } : {}),
+    } } : {}),
     ...(style.automatic ? { automatic: { ...style.automatic } } : {}),
   };
 }
@@ -156,14 +328,20 @@ function copyAutomatic(config: AutomaticLandscape): AutomaticLandscape { return 
 
 export function buildAutomaticLandscape(base: LandscapeStyle, config: AutomaticLandscape): LandscapeStyle {
   const count = config.layerCount;
+  // The selected two colors now span N background layers PLUS two additional
+  // decor tones whenever at least one decorative plane uses automatic color.
+  // Old manual-color environments retain their exact original background colors.
+  const gradientDecorEnabled = (base.foreground?.enabled && base.foreground.colorMode === 'gradient')
+    || (base.midground?.enabled && base.midground.colorMode === 'gradient');
+  const paletteSteps = count + (gradientDecorEnabled ? 2 : 0);
   const layers: LandscapeLayer[] = Array.from({ length: count }, (_, index) => {
     const depth = count === 1 ? 1 : index / (count - 1);
     const type: LandscapeLayerKind = config.composition === 'mixed'
       ? (index % 3 === 2 ? 'buildings' : 'mountains') : config.composition;
     return {
       type,
-      // The sky is the unpainted layer zero; (i + 1) / count follows the original generator.
-      color: mixLandscapeColors(config.skyColor, config.frontColor, (index + 1) / count),
+      // Reserve two more RGB steps for the third and first plane, if needed.
+      color: mixLandscapeColors(config.skyColor, config.frontColor, (index + 1) / paletteSteps),
       amplitude: Math.round(6 + 20 * depth),
       detail: Math.round(12 + 73 * depth),
     };
@@ -181,7 +359,9 @@ export function defaultLandscapePreferences(): LandscapePreferences {
   return {
     selection: 'cycle',
     mode: 'automatic',
-    custom: { ...copyLandscape(LANDSCAPE_PRESETS.night.style), automatic: copyAutomatic(AUTO_PRESETS.night), advancedEdited: false },
+    custom: { ...copyLandscape(LANDSCAPE_PRESETS.night.style),
+      foreground: { ...DEFAULT_FOREGROUND }, midground: { ...DEFAULT_MIDGROUND },
+      automatic: copyAutomatic(AUTO_PRESETS.night), advancedEdited: false },
     library: [],
     cyclePool: [...PRESET_ORDER],
     rotation: 'sequential',
@@ -269,6 +449,42 @@ function sanitizeAutomatic(value: unknown, fallback: AutomaticLandscape): Automa
   };
 }
 
+function sanitizeDecor(value: unknown, fallback: DecorLayerConfig,
+  minParallax: number, maxParallax: number): DecorLayerConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...fallback };
+  const v = value as Record<string, unknown>;
+  const bounded = (candidate: unknown, min: number, max: number, previous: number): number =>
+    typeof candidate === 'number' && Number.isFinite(candidate)
+      ? Math.max(min, Math.min(max, candidate)) : previous;
+  return {
+    enabled: typeof v.enabled === 'boolean' ? v.enabled : fallback.enabled,
+    kind: v.kind === 'trees' || v.kind === 'fence' || v.kind === 'grille'
+      || v.kind === 'buildings' || v.kind === 'drawing' ? v.kind : fallback.kind,
+    color: color(v.color, fallback.color),
+    // Existing saved environments have no colorMode: keep their original manual colors.
+    colorMode: v.colorMode === 'gradient' ? 'gradient' : 'manual',
+    invertGradient: typeof v.invertGradient === 'boolean' ? v.invertGradient : false,
+    opacity: bounded(v.opacity, 0.1, 1, fallback.opacity),
+    parallax: bounded(v.parallax, minParallax, maxParallax, fallback.parallax),
+    spanPercent: Math.round(bounded(v.spanPercent, 5, 100, fallback.spanPercent)),
+    ...(v.bitmap !== undefined
+      ? { bitmap: sanitizeDecorBitmap(v.bitmap) }
+      : fallback.bitmap ? { bitmap: sanitizeDecorBitmap(fallback.bitmap) } : {}),
+  };
+}
+
+/** Front plane moves slightly faster than the vehicle and occludes it. */
+export function sanitizeForeground(value: unknown,
+  fallback: ForegroundConfig = { ...DEFAULT_FOREGROUND }): ForegroundConfig {
+  return sanitizeDecor(value, fallback, 1, 1.35);
+}
+
+/** Middle plane moves more slowly, between vehicles and mountainous/building backgrounds. */
+export function sanitizeMidground(value: unknown,
+  fallback: DecorLayerConfig = { ...DEFAULT_MIDGROUND }): DecorLayerConfig {
+  return sanitizeDecor(value, fallback, 0.4, 1);
+}
+
 export function sanitizeLandscapeStyle(value: unknown, fallback = defaultLandscapePreferences().custom): LandscapeStyle {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return copyLandscape(fallback);
   const v = value as Record<string, unknown>;
@@ -295,6 +511,8 @@ export function sanitizeLandscapeStyle(value: unknown, fallback = defaultLandsca
     moon: typeof v.moon === 'boolean' ? v.moon : typeof v.stars === 'boolean' ? v.stars : fallback.moon,
     seed: int(v.seed, 0, 999999999, fallback.seed),
     layers,
+    foreground: sanitizeForeground(v.foreground, fallback.foreground ?? { ...DEFAULT_FOREGROUND }),
+    midground: sanitizeMidground(v.midground, fallback.midground ?? { ...DEFAULT_MIDGROUND }),
     automatic: sanitizeAutomatic(v.automatic, legacy
       ? {
           skyColor: color(v.skyTop, autoFallback.skyColor),
