@@ -2,8 +2,8 @@ import {
   blankDecorBitmap, sanitizeDecorBitmap,
 } from '../landscape/LandscapeConfig';
 import type { DecorBitmap } from '../landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels, drawDecorPolygon, resizeDecorBitmap } from '../landscape/DecorDrawing';
-import type { DecorDrawTool, PixelPoint } from '../landscape/DecorDrawing';
+import { decorInkCount, drawDecorPixels, drawDecorPolygon, normalizeDecorSelection, resizeDecorBitmap } from '../landscape/DecorDrawing';
+import type { DecorDrawTool, DecorSelection, PixelPoint } from '../landscape/DecorDrawing';
 
 /** Small self-contained raster editor. Editing the draft does not mutate saved styles
  * until Aplicar is pressed; Cancelar discards it entirely. */
@@ -18,7 +18,11 @@ export class DecorPaintEditor {
   private readonly brushValue: HTMLElement;
   private readonly filled: HTMLInputElement;
   private readonly polygonButton: HTMLButtonElement;
+  private readonly deselectButton: HTMLButtonElement;
   private readonly status: HTMLElement;
+  /** UI-only overlay: never persisted in landscapes or counted in drawing history. */
+  private selection: DecorSelection | null = null;
+  private selectionBeforeDrag: DecorSelection | null = null;
   private polygon: PixelPoint[] = [];
   private bitmap: DecorBitmap = blankDecorBitmap();
   private undo: DecorBitmap[] = [];
@@ -57,6 +61,7 @@ export class DecorPaintEditor {
             <option value="circle">Círculo / elipse</option>
             <option value="triangle">Triángulo</option>
             <option value="polygon">Polígono por vértices</option>
+            <option value="select">Seleccionar región</option>
           </select>
         </label>
         <label>Grosor
@@ -75,6 +80,7 @@ export class DecorPaintEditor {
         <button type="button" data-paint="zoom-out" aria-label="Alejar lienzo">−</button>
         <button type="button" data-paint="zoom-in" aria-label="Acercar lienzo">+</button>
         <button type="button" data-paint="polygon-close" disabled>Cerrar polígono</button>
+        <button type="button" data-paint="selection-cancel" disabled>Cancelar selección</button>
         <button type="button" data-paint="undo">Deshacer</button>
         <button type="button" data-paint="redo">Rehacer</button>
         <button type="button" data-paint="clear">Limpiar</button>
@@ -98,11 +104,17 @@ export class DecorPaintEditor {
     this.brushValue = this.dialog.querySelector<HTMLElement>('.decor-paint-brush-value')!;
     this.filled = this.dialog.querySelector<HTMLInputElement>('.decor-paint-filled')!;
     this.polygonButton = this.dialog.querySelector<HTMLButtonElement>('[data-paint="polygon-close"]')!;
+    this.deselectButton = this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-cancel"]')!;
+    this.deselectButton.addEventListener('click', () => this.cancelSelection());
     this.brushSize.addEventListener('input', () => {
       this.brushValue.textContent = `${this.brushSize.value} px`;
     });
     this.tool.addEventListener('change', () => {
       this.polygon = [];
+      // Until manipulations are implemented, a selection does not clip other tools.
+      // Switching tools clears the selection to avoid misleading the user.
+      this.selection = null;
+      this.selectionBeforeDrag = null;
       this.paint();
     });
     this.zoom.addEventListener('change', () => this.changeZoom(Number(this.zoom.value)));
@@ -121,6 +133,8 @@ export class DecorPaintEditor {
       this.snapshotForUndo();
       this.bitmap = resizeDecorBitmap(this.bitmap, requested);
       this.polygon = [];
+      this.selection = null;
+      this.selectionBeforeDrag = null;
       this.paint();
     });
     this.status = this.dialog.querySelector<HTMLElement>('.decor-paint-status')!;
@@ -137,6 +151,15 @@ export class DecorPaintEditor {
         this.paint();
         return;
       }
+      if (this.tool.value === 'select') {
+        this.selectionBeforeDrag = this.selection;
+        this.selection = normalizeDecorSelection(this.start, this.start,
+          this.bitmap.width, this.bitmap.height);
+        this.pointer = event.pointerId;
+        this.canvas.setPointerCapture(event.pointerId);
+        this.paint();
+        return;
+      }
       this.pointer = event.pointerId;
       this.canvas.setPointerCapture(event.pointerId);
       this.snapshot = sanitizeDecorBitmap(this.bitmap);
@@ -147,10 +170,24 @@ export class DecorPaintEditor {
     this.canvas.addEventListener('pointermove', event => {
       if (this.pointer !== event.pointerId) return;
       event.preventDefault();
-      this.extend(event);
+      if (this.tool.value === 'select') {
+        this.selection = normalizeDecorSelection(this.start, this.point(event),
+          this.bitmap.width, this.bitmap.height);
+        this.paint();
+      } else this.extend(event);
     });
     this.canvas.addEventListener('pointerup', event => {
       if (this.pointer !== event.pointerId) return;
+      if (this.tool.value === 'select') {
+        this.selection = normalizeDecorSelection(this.start, this.point(event),
+          this.bitmap.width, this.bitmap.height);
+        this.selectionBeforeDrag = null;
+        this.pointer = null;
+        if (this.canvas.hasPointerCapture(event.pointerId))
+          this.canvas.releasePointerCapture(event.pointerId);
+        this.paint();
+        return;
+      }
       this.extend(event);
       if (this.snapshot && this.snapshot.rows.join('') !== this.bitmap.rows.join('')) {
         this.undo.push(this.snapshot);
@@ -165,7 +202,10 @@ export class DecorPaintEditor {
     });
     this.canvas.addEventListener('pointercancel', event => {
       if (this.pointer !== event.pointerId) return;
-      if (this.snapshot) this.bitmap = this.snapshot;
+      if (this.tool.value === 'select') {
+        this.selection = this.selectionBeforeDrag;
+        this.selectionBeforeDrag = null;
+      } else if (this.snapshot) this.bitmap = this.snapshot;
       this.pointer = null; this.snapshot = null; this.paint();
     });
 
@@ -176,6 +216,7 @@ export class DecorPaintEditor {
       this.snapshotForUndo();
       this.polygon = [];
       this.bitmap = blankDecorBitmap(this.bitmap.width);
+      this.selection = null;
       this.paint();
     });
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="apply"]')!.addEventListener('click', () => {
@@ -183,7 +224,12 @@ export class DecorPaintEditor {
       this.close();
     });
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="cancel"]')!.addEventListener('click', () => this.close());
-    this.dialog.addEventListener('cancel', event => { event.preventDefault(); this.close(); });
+    this.dialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      // Escape deselects before it dismisses the drawing dialog.
+      if (this.selection) this.cancelSelection();
+      else this.close();
+    });
     this.dialog.addEventListener('keydown', event => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       if (event.key.toLowerCase() === 'z') {
@@ -201,6 +247,8 @@ export class DecorPaintEditor {
     this.bitmap = sanitizeDecorBitmap(previous);
     this.undo = []; this.redo = []; this.pointer = null; this.snapshot = null;
     this.polygon = [];
+    this.selection = null;
+    this.selectionBeforeDrag = null;
     this.onApply = apply;
     this.tool.value = 'brush';
     this.resolution.value = String(this.bitmap.width);
@@ -221,6 +269,8 @@ export class DecorPaintEditor {
   private close(): void {
     if (this.dialog.open) this.dialog.close();
     this.polygon = [];
+    this.selection = null;
+    this.selectionBeforeDrag = null;
     this.onApply = null;
   }
 
@@ -251,6 +301,7 @@ export class DecorPaintEditor {
 
   private stepBack(): void {
     this.polygon = [];
+    this.selection = null;
     const last = this.undo.pop();
     if (!last) return;
     this.redo.push(this.bitmap);
@@ -260,6 +311,7 @@ export class DecorPaintEditor {
 
   private stepForward(): void {
     this.polygon = [];
+    this.selection = null;
     const next = this.redo.pop();
     if (!next) return;
     this.undo.push(this.bitmap);
@@ -282,6 +334,12 @@ export class DecorPaintEditor {
     this.snapshotForUndo();
     this.bitmap = drawDecorPolygon(this.bitmap, this.polygon, this.drawOptions());
     this.polygon = [];
+    this.paint();
+  }
+
+  private cancelSelection(): void {
+    this.selection = null;
+    this.selectionBeforeDrag = null;
     this.paint();
   }
 
@@ -330,8 +388,25 @@ export class DecorPaintEditor {
       this.ctx.lineTo(this.canvas.width, y * stepY + 0.5);
     }
     this.ctx.stroke();
-    this.status.textContent = `${this.bitmap.width} × ${this.bitmap.height} píxeles · ${decorInkCount(this.bitmap)} pintados · ${this.undo.length} pasos para deshacer`;
+    if (this.selection) {
+      // A dashed overlay is visible at any zoom but never affects the bitmap.
+      const selected = this.selection;
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(255, 215, 99, 0.13)';
+      this.ctx.fillRect(selected.x, selected.y, selected.width, selected.height);
+      this.ctx.strokeStyle = '#ffe27c';
+      this.ctx.lineWidth = Math.max(1, this.bitmap.width / 1024);
+      this.ctx.setLineDash([Math.max(2, this.bitmap.width / 512), Math.max(2, this.bitmap.width / 512)]);
+      this.ctx.strokeRect(selected.x + 0.5, selected.y + 0.5,
+        Math.max(0, selected.width - 1), Math.max(0, selected.height - 1));
+      this.ctx.restore();
+    }
+    const selText = this.selection
+      ? ` · selección x=${this.selection.x}, y=${this.selection.y} · ${this.selection.width} × ${this.selection.height} px`
+      : '';
+    this.status.textContent = `${this.bitmap.width} × ${this.bitmap.height} píxeles · ${decorInkCount(this.bitmap)} pintados · ${this.undo.length} pasos para deshacer${selText}`;
     this.polygonButton.disabled = this.polygon.length < 3;
+    this.deselectButton.disabled = !this.selection;
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="undo"]')!.disabled = !this.undo.length;
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="redo"]')!.disabled = !this.redo.length;
   }
