@@ -6,7 +6,7 @@ import {
   DEFAULT_FOREGROUND, DEFAULT_MIDGROUND, defaultLandscapePreferences,
   sanitizeDecorBitmap, sanitizeLandscapePreferences,
 } from '../../src/landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels, drawDecorPolygon, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
+import { decorInkCount, drawDecorPixels, drawDecorPolygon, normalizeDecorSelection, resizeDecorBitmap } from '../../src/landscape/DecorDrawing';
 import { FOREGROUND_DEPTH, MIDGROUND_DEPTH, ForegroundDecor, drawingMotifWidth,
   decorSpanWidth } from '../../src/render/ForegroundDecor';
 
@@ -31,6 +31,36 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     const old = blankDecorBitmap(96);
     old.rows[3] = '1' + '0'.repeat(95);
     expect(sanitizeDecorBitmap(JSON.parse(JSON.stringify(old)))).toEqual(old);
+  });
+
+  it('normaliza selecciones rectangulares en ambas direcciones sin escribir píxeles', () => {
+    const bitmap = drawDecorPixels(blankDecorBitmap(2048), 'rectangle',
+      { x: 100, y: 30 }, { x: 200, y: 70 }, { filled: true });
+    const copy = bitmap.rows.slice();
+    expect(normalizeDecorSelection({ x: 100, y: 50 }, { x: 20, y: 10 }, 2048, 256))
+      .toEqual({ x: 20, y: 10, width: 81, height: 41 });
+    expect(normalizeDecorSelection({ x: 20, y: 10 }, { x: 100, y: 50 }, 2048, 256))
+      .toEqual({ x: 20, y: 10, width: 81, height: 41 });
+    expect(normalizeDecorSelection({ x: 32, y: 13 }, { x: 32, y: 13 }, 2048, 256))
+      .toEqual({ x: 32, y: 13, width: 1, height: 1 });
+    expect(bitmap.rows).toEqual(copy);
+    expect(decorInkCount(bitmap)).toBeGreaterThan(0);
+  });
+
+  it('limita las selecciones a los bordes de lienzos antiguos y panorámicos', () => {
+    for (const width of [96, 384, 512, 2048]) {
+      const bitmap = blankDecorBitmap(width);
+      const box = normalizeDecorSelection({ x: -150, y: -50 }, { x: width + 5, y: bitmap.height + 20 },
+        bitmap.width, bitmap.height);
+      expect(box).toEqual({ x: 0, y: 0, width, height: bitmap.height });
+      expect(normalizeDecorSelection({ x: width + 3, y: 7000 }, { x: width + 4, y: 7001 },
+        bitmap.width, bitmap.height)).toEqual({
+          x: width - 1, y: bitmap.height - 1, width: 1, height: 1,
+        });
+    }
+    expect(normalizeDecorSelection({ x: 0, y: 0 }, { x: 10, y: 10 }, 0, 256)).toBeNull();
+    expect(normalizeDecorSelection({ x: NaN, y: 0 }, { x: 10, y: 10 }, 96, 32)).toBeNull();
+    expect(normalizeDecorSelection({ x: 0, y: 0 }, { x: Infinity, y: 10 }, 96, 32)).toBeNull();
   });
 
   it('dibuja con pincel, línea, rectángulo y borrador, sin cambiar el origen', () => {
