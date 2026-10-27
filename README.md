@@ -34,7 +34,9 @@ Para evitar la repetición prematura de figuras observada en la captura del jueg
 
 Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar figuras, grosor del pincel 1–32 px y zoom 1–8×** con desplazamiento horizontal. El guardado convierte internamente las filas binarias a un bitset Base64 compacto (formato v2), con lectura compatible de los dibujos v1. El cambio de proporción al variar resolución conserva el tamaño de la figura agregando espacio vacío; no deforma el árbol viejo.
 
-**Implementado en GitHub, pendiente de validación con build, Vitest, Playwright y prueba visual del usuario.**
+**Corrección de pruebas E2E:** el primer intento de validación de esta ampliación terminó con **4 pruebas aprobadas y 4 fallidas**. Las dos causas identificadas fueron un selector de estado ambiguo y un área de dibujo no visible con zoom 2×. En la rama se ajustó el inicio del editor a **1×, lienzo completo visible** y se corrigió la semántica y selección del indicador de grosor. Hay una prueba nueva para el lado derecho del panorama. **Aún no se han reejecutado las pruebas tras ese parche**.
+
+**Implementado en GitHub; pendiente de nueva validación E2E y prueba visual del usuario.**
 
 **Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
