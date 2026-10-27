@@ -150,7 +150,11 @@ test('incorpora zoom, pincel grueso, elipse, triángulo y polígono relleno', as
   await dialog.getByRole('button', { name: 'Alejar lienzo' }).click();
   await zoom.selectOption('1');
 
-  await dialog.getByRole('slider', { name: 'Grosor del pincel' }).fill('12');
+  await dialog.getByRole('slider', { name: 'Grosor del pincel' }).evaluate(element => {
+    const slider = element as HTMLInputElement;
+    slider.value = '12';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await expect(dialog.locator('.decor-paint-brush-value')).toHaveText('12 px');
   const rectangle = await canvas.boundingBox();
   expect(rectangle).not.toBeNull();
