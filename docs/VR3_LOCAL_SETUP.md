@@ -53,6 +53,24 @@ No anunciar pruebas aprobadas hasta ejecutar realmente estos comandos. Si falla 
 
 El usuario **autorizó fusionar el incremento Paint a `main` el 26/10/2026** después de la aceptación visual. La integración se hará mediante Pull Request, conservando la historia; la rama de trabajo se mantiene para consulta y no debe eliminarse automáticamente. Pages y los pipelines CI continúan **manuales**; no habilitar GitHub Actions.
 
+## Resultados y correcciones de la Entrega A (26/10/2026)
+
+El usuario ejecutó build, Vitest y los 16 E2E de Paint/selección en la rama `feat/phase3-selection-tools`. **Build aprobado y suite unitaria específica aprobada**. Playwright terminó **12/16 aprobadas**, cuatro fallidas por dos causas repetidas en ambos backends:
+
+1. El localizador `getByRole('button', { name: 'Cancelar' })` coincide con los botones «Cancelar» y «Cancelar selección». Corrección: usar `exact: true` para el botón de cerrar.
+2. Después de usar un control de zoom, Escape no quitaba la selección (el navegador podía consumir la pulsación antes de disparar `dialog.cancel`). Corrección: manejar Escape en la fase de captura del `keydown` del diálogo; primera pulsación cancela selección, segunda cierra el editor. La prueba además suponía erróneamente que deshacer estaría deshabilitado, aunque cambiar resolución de 2048×256 a 96×32 genera legítimamente un paso; ahora comprueba la conservación de ese paso.
+
+**Parches subidos a GitHub, nueva ejecución local todavía pendiente.** Validar exclusivamente los cuatro casos afectados:
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase3-selection-tools
+npx playwright test tests/e2e/decor-paint.spec.ts -g "cancelar no cambia|la selección conserva"
+```
+
+No volver a ejecutar toda la batería salvo que esta corrección provoque otro defecto.
+
 ## Entrega A de selección rectangular — rama aislada (26/10/2026)
 
 **Estado:** implementada en GitHub en `feat/phase3-selection-tools`, **pendiente de ejecutar build y pruebas locales**. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
