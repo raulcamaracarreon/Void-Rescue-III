@@ -30,6 +30,86 @@ export function normalizeDecorSelection(from: PixelPoint, to: PixelPoint,
   };
 }
 
+
+/** Clipboard stores only the selected binary rectangle; '0' is transparent
+ * when pasted, so underlying ink is not accidentally erased. */
+export interface DecorClipboard { width: number; height: number; rows: string[] }
+
+function safeRect(bitmap: DecorBitmap, selection: DecorSelection): DecorSelection | null {
+  const { x, y, width, height } = selection;
+  if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1) return null;
+  if (x < 0 || y < 0 || x >= bitmap.width || y >= bitmap.height) return null;
+  return { x, y, width: Math.min(width, bitmap.width - x),
+    height: Math.min(height, bitmap.height - y) };
+}
+
+/** Keep the entire region in frame; oversized clips start at (0,0) and
+ * will be cropped by the paste operation. */
+export function clampDecorOrigin(bitmap: DecorBitmap, width: number, height: number,
+  position: PixelPoint): PixelPoint {
+  return {
+    x: Math.max(0, Math.min(Math.max(0, bitmap.width - width), Math.round(position.x))),
+    y: Math.max(0, Math.min(Math.max(0, bitmap.height - height), Math.round(position.y))),
+  };
+}
+
+export function copyDecorRegion(source: DecorBitmap,
+  selection: DecorSelection): DecorClipboard | null {
+  const valid = sanitizeDecorBitmap(source);
+  const rect = safeRect(valid, selection);
+  if (!rect) return null;
+  return { width: rect.width, height: rect.height,
+    rows: valid.rows.slice(rect.y, rect.y + rect.height)
+      .map(row => row.slice(rect.x, rect.x + rect.width)) };
+}
+
+export function eraseDecorRegion(source: DecorBitmap, selection: DecorSelection): DecorBitmap {
+  const valid = sanitizeDecorBitmap(source);
+  const rect = safeRect(valid, selection);
+  if (!rect) return valid;
+  const rows = valid.rows.slice();
+  const cleared = '0'.repeat(rect.width);
+  for (let y = rect.y; y < rect.y + rect.height; y++) {
+    const row = rows[y]!;
+    rows[y] = row.slice(0, rect.x) + cleared + row.slice(rect.x + rect.width);
+  }
+  return { ...valid, rows };
+}
+
+export function pasteDecorRegion(source: DecorBitmap, clipboard: DecorClipboard,
+  position: PixelPoint): DecorBitmap {
+  const valid = sanitizeDecorBitmap(source);
+  if (!Number.isInteger(clipboard.width) || !Number.isInteger(clipboard.height)
+    || clipboard.width < 1 || clipboard.height < 1
+    || clipboard.width > 2048 || clipboard.height > 256
+    || clipboard.rows.length !== clipboard.height
+    || !clipboard.rows.every(row => row.length === clipboard.width && /^[01]+$/.test(row))
+    || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return valid;
+  const start = clampDecorOrigin(valid, clipboard.width, clipboard.height, position);
+  const rows = valid.rows.slice();
+  for (let y = 0; y < clipboard.height && y + start.y < valid.height; y++) {
+    const sourceRow = clipboard.rows[y]!;
+    const targetRow = rows[y + start.y]!.split('');
+    for (let x = 0; x < clipboard.width && x + start.x < valid.width; x++)
+      if (sourceRow[x] === '1') targetRow[x + start.x] = '1';
+    rows[y + start.y] = targetRow.join('');
+  }
+  return { ...valid, rows };
+}
+
+/** Move takes its ink from a snapshot. Erase happens BEFORE transparent paste,
+ * preventing the original location from being restored on overlap. */
+export function moveDecorRegion(source: DecorBitmap, selection: DecorSelection,
+  position: PixelPoint): DecorBitmap {
+  const valid = sanitizeDecorBitmap(source);
+  const clipboard = copyDecorRegion(valid, selection);
+  const rect = safeRect(valid, selection);
+  if (!clipboard || !rect) return valid;
+  const target = clampDecorOrigin(valid, rect.width, rect.height, position);
+  if (target.x === rect.x && target.y === rect.y) return valid;
+  return pasteDecorRegion(eraseDecorRegion(valid, rect), clipboard, target);
+}
+
 /** Pure, deterministic bitmap editing with supported 3:1 monochrome masks. */
 export function drawDecorPixels(source: DecorBitmap, tool: DecorDrawTool,
   from: PixelPoint, to: PixelPoint, options: DrawOptions = {}): DecorBitmap {
