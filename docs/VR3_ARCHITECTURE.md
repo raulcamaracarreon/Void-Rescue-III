@@ -79,3 +79,15 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 - `spanPercent` define la franja **ocupada por repeticiones**, no el ancho del motivo. Esto mantiene los objetos sin deformaciones y permite que un dibujo de 288 × 96 tenga el mismo tamaño físico que uno de 96 × 32, pero mayor detalle.
 - Limitación actual: no hay control de escalado físico del motivo ni importación/exportación; los dibujos grandes en muchas bibliotecas podrían alcanzar el límite de almacenamiento del navegador. Conservar y no sobrescribir la biblioteca en migraciones.
 - Pruebas añadidas para los cuatro tamaños, máscaras v1 antiguas, tesselación, recorte final y recuperación desde la UI; pendientes de verificación local.
+
+
+## Incremento panorámico y herramientas Paint (26/10/2026)
+
+- El alto físico del motivo sigue siendo 50 unidades del juego. Los dibujos antiguos 3:1 usan 150 unidades de ancho, mientras que los nuevos dibujos **8:1** (512×64, 1024×128 o 2048×256) miden **400 unidades**. La vista habitual de juego tiene alrededor de 200 unidades de ancho (112 de alto × relación de aspecto aproximadamente 16:9); por ello, un árbol al inicio del motivo no se repite dentro de esa misma pantalla típica.
+- El renderizador mantiene geometría compartida, recorte de la última repetición y tres instancias para la topología circular de 2400 unidades, sin colisiones nuevas. La longitud lateral sigue definiendo el tramo del mundo que se decora.
+- `DecorDrawing.ts`: dibujo de líneas, círculos/elipses, triángulos, rectángulos, polígonos cerrados y rellenos por scanline; grosor configurable para pincel y trazos. El usuario coloca vértices sucesivos y pulsa «Cerrar polígono».
+- `DecorPaintEditor.ts`: selector 8:1 (2048×256 predeterminado para dibujos nuevos), zoom 1/2/4/8×, controles de grosor/relleno y área desplazable con el contenido de mayor resolución. Los dibujos guardados conservan su dimensión al reabrirse.
+- `LandscapeConfig.ts`: representación interna v1 (`rows` binarias) con serialización JSON v2 compacta por bitset Base64; no se fuerza migración al abrir los archivos antiguos. Se valida explícitamente longitud, caracteres y dimensiones antes de descomprimir datos.
+- Al transformar entre formatos de proporción 3:1 y 8:1, el dibujo se mantiene en escala proporcional: se agrega espacio transparente lateral cuando corresponde y se alinean verticalmente los motivos más pequeños hacia el suelo. El remuestreo de reducción conserva los píxeles pintados para evitar pérdida de líneas finas.
+- Límite deliberado de 2048×256 para evitar lienzos demasiado grandes antes de una evaluación de rendimiento y de almacenamiento en bibliotecas extensas.
+- **Estado:** código implementado, pruebas nuevas añadidas y **pendiente de ejecución local**; no declarar la ampliación validada ni fusionar todavía.
