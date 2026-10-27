@@ -237,10 +237,13 @@ export class DecorPaintEditor {
   private extend(event: PointerEvent): void {
     const next = this.point(event);
     const tool = this.tool.value as DecorDrawTool;
-    if (tool === 'line' || tool === 'rectangle') {
-      this.bitmap = drawDecorPixels(this.snapshot!, tool, this.start, next, this.drawOptions());
-    } else {
+    if (tool === 'brush' || tool === 'eraser') {
+      // Only freehand tools accumulate segments between successive pointer positions.
       this.bitmap = drawDecorPixels(this.bitmap, tool, this.last, next, this.drawOptions());
+    } else {
+      // Every geometric figure is recalculated from pointerdown, not stamped like a brush.
+      // This includes circle and triangle (which previously fell into the freehand path).
+      this.bitmap = drawDecorPixels(this.snapshot!, tool, this.start, next, this.drawOptions());
     }
     this.last = next;
     this.paint();
