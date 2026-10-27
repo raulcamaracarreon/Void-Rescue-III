@@ -2,8 +2,8 @@ import {
   blankDecorBitmap, sanitizeDecorBitmap,
 } from '../landscape/LandscapeConfig';
 import type { DecorBitmap } from '../landscape/LandscapeConfig';
-import { decorInkCount, drawDecorPixels, drawDecorPolygon, normalizeDecorSelection, resizeDecorBitmap } from '../landscape/DecorDrawing';
-import type { DecorDrawTool, DecorSelection, PixelPoint } from '../landscape/DecorDrawing';
+import { clampDecorOrigin, copyDecorRegion, decorInkCount, drawDecorPixels, drawDecorPolygon, eraseDecorRegion, moveDecorRegion, normalizeDecorSelection, pasteDecorRegion, resizeDecorBitmap } from '../landscape/DecorDrawing';
+import type { DecorClipboard, DecorDrawTool, DecorSelection, PixelPoint } from '../landscape/DecorDrawing';
 
 /** Small self-contained raster editor. Editing the draft does not mutate saved styles
  * until Aplicar is pressed; Cancelar discards it entirely. */
@@ -23,6 +23,9 @@ export class DecorPaintEditor {
   /** UI-only overlay: never persisted in landscapes or counted in drawing history. */
   private selection: DecorSelection | null = null;
   private selectionBeforeDrag: DecorSelection | null = null;
+  private movingSelection = false;
+  private clipboard: DecorClipboard | null = null;
+  private clipboardOrigin: PixelPoint | null = null;
   private polygon: PixelPoint[] = [];
   private bitmap: DecorBitmap = blankDecorBitmap();
   private undo: DecorBitmap[] = [];
@@ -81,6 +84,15 @@ export class DecorPaintEditor {
         <button type="button" data-paint="zoom-in" aria-label="Acercar lienzo">+</button>
         <button type="button" data-paint="polygon-close" disabled>Cerrar polígono</button>
         <button type="button" data-paint="selection-cancel" disabled>Cancelar selección</button>
+        <button type="button" data-paint="selection-copy" disabled>Copiar</button>
+        <button type="button" data-paint="selection-cut" disabled>Cortar</button>
+        <button type="button" data-paint="selection-paste" disabled>Pegar</button>
+        <button type="button" data-paint="selection-duplicate" disabled>Duplicar</button>
+        <button type="button" data-paint="selection-delete" disabled>Borrar selección</button>
+        <button type="button" data-paint="selection-left" aria-label="Mover selección a la izquierda" disabled>←</button>
+        <button type="button" data-paint="selection-up" aria-label="Mover selección arriba" disabled>↑</button>
+        <button type="button" data-paint="selection-down" aria-label="Mover selección abajo" disabled>↓</button>
+        <button type="button" data-paint="selection-right" aria-label="Mover selección a la derecha" disabled>→</button>
         <button type="button" data-paint="undo">Deshacer</button>
         <button type="button" data-paint="redo">Rehacer</button>
         <button type="button" data-paint="clear">Limpiar</button>
@@ -106,6 +118,22 @@ export class DecorPaintEditor {
     this.polygonButton = this.dialog.querySelector<HTMLButtonElement>('[data-paint="polygon-close"]')!;
     this.deselectButton = this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-cancel"]')!;
     this.deselectButton.addEventListener('click', () => this.cancelSelection());
+    this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-copy"]')!
+      .addEventListener('click', () => this.copySelection());
+    this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-cut"]')!
+      .addEventListener('click', () => this.cutSelection());
+    this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-paste"]')!
+      .addEventListener('click', () => this.pasteSelection());
+    this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-duplicate"]')!
+      .addEventListener('click', () => this.duplicateSelection());
+    this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-delete"]')!
+      .addEventListener('click', () => this.deleteSelection());
+    for (const [action, dx, dy] of [
+      ['left', -1, 0], ['right', 1, 0], ['up', 0, -1], ['down', 0, 1],
+    ] as const) {
+      this.dialog.querySelector<HTMLButtonElement>(`[data-paint="selection-${action}"]`)!
+        .addEventListener('click', () => this.shiftSelection(dx, dy));
+    }
     this.brushSize.addEventListener('input', () => {
       this.brushValue.textContent = `${this.brushSize.value} px`;
     });
@@ -115,6 +143,7 @@ export class DecorPaintEditor {
       // Switching tools clears the selection to avoid misleading the user.
       this.selection = null;
       this.selectionBeforeDrag = null;
+      this.movingSelection = false;
       this.paint();
     });
     this.zoom.addEventListener('change', () => this.changeZoom(Number(this.zoom.value)));
@@ -153,8 +182,17 @@ export class DecorPaintEditor {
       }
       if (this.tool.value === 'select') {
         this.selectionBeforeDrag = this.selection;
-        this.selection = normalizeDecorSelection(this.start, this.start,
-          this.bitmap.width, this.bitmap.height);
+        // Drag from INSIDE an existing selection moves its ink as a single step;
+        // drag outside starts a new region without changing the mask.
+        this.movingSelection = Boolean(this.selection
+          && this.start.x >= this.selection.x
+          && this.start.y >= this.selection.y
+          && this.start.x < this.selection.x + this.selection.width
+          && this.start.y < this.selection.y + this.selection.height);
+        this.snapshot = this.movingSelection ? sanitizeDecorBitmap(this.bitmap) : null;
+        if (!this.movingSelection)
+          this.selection = normalizeDecorSelection(this.start, this.start,
+            this.bitmap.width, this.bitmap.height);
         this.pointer = event.pointerId;
         this.canvas.setPointerCapture(event.pointerId);
         this.paint();
@@ -171,16 +209,21 @@ export class DecorPaintEditor {
       if (this.pointer !== event.pointerId) return;
       event.preventDefault();
       if (this.tool.value === 'select') {
-        this.selection = normalizeDecorSelection(this.start, this.point(event),
-          this.bitmap.width, this.bitmap.height);
-        this.paint();
+        this.dragSelection(event);
       } else this.extend(event);
     });
     this.canvas.addEventListener('pointerup', event => {
       if (this.pointer !== event.pointerId) return;
       if (this.tool.value === 'select') {
-        this.selection = normalizeDecorSelection(this.start, this.point(event),
-          this.bitmap.width, this.bitmap.height);
+        this.dragSelection(event);
+        // Moving several pixels during one drag creates a SINGLE undo step.
+        if (this.movingSelection && this.snapshot && this.changed(this.snapshot, this.bitmap)) {
+          this.undo.push(this.snapshot);
+          if (this.undo.length > 30) this.undo.shift();
+          this.redo = [];
+        }
+        this.snapshot = null;
+        this.movingSelection = false;
         this.selectionBeforeDrag = null;
         this.pointer = null;
         if (this.canvas.hasPointerCapture(event.pointerId))
@@ -203,8 +246,10 @@ export class DecorPaintEditor {
     this.canvas.addEventListener('pointercancel', event => {
       if (this.pointer !== event.pointerId) return;
       if (this.tool.value === 'select') {
+        if (this.movingSelection && this.snapshot) this.bitmap = this.snapshot;
         this.selection = this.selectionBeforeDrag;
         this.selectionBeforeDrag = null;
+        this.movingSelection = false;
       } else if (this.snapshot) this.bitmap = this.snapshot;
       this.pointer = null; this.snapshot = null; this.paint();
     });
@@ -241,6 +286,18 @@ export class DecorPaintEditor {
       else this.close();
     }, { capture: true });
     this.dialog.addEventListener('keydown', event => {
+      if (this.selection && this.tool.value === 'select'
+          && !event.ctrlKey && !event.metaKey && !event.altKey
+          && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete'].includes(event.key)
+          && (event.target === this.canvas || event.target === this.dialog.querySelector('.decor-paint-viewport'))) {
+        event.preventDefault();
+        if (event.key === 'Delete') this.deleteSelection();
+        else this.shiftSelection(
+          (event.key === 'ArrowRight' ? 1 : 0) - (event.key === 'ArrowLeft' ? 1 : 0),
+          (event.key === 'ArrowDown' ? 1 : 0) - (event.key === 'ArrowUp' ? 1 : 0),
+          event.shiftKey ? 10 : 1);
+        return;
+      }
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       if (event.key.toLowerCase() === 'z') {
         event.preventDefault();
@@ -248,6 +305,16 @@ export class DecorPaintEditor {
         else this.stepBack();
       } else if (event.key.toLowerCase() === 'y') {
         event.preventDefault(); this.stepForward();
+      } else if (this.tool.value === 'select'
+          && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement)) {
+        const action = event.key.toLowerCase();
+        if (['c', 'x', 'v', 'd'].includes(action)) {
+          event.preventDefault();
+          if (action === 'c') this.copySelection();
+          if (action === 'x') this.cutSelection();
+          if (action === 'v') this.pasteSelection();
+          if (action === 'd') this.duplicateSelection();
+        }
       }
     });
   }
@@ -259,6 +326,9 @@ export class DecorPaintEditor {
     this.polygon = [];
     this.selection = null;
     this.selectionBeforeDrag = null;
+    this.movingSelection = false;
+    this.clipboard = null; // no clipboard bleed across planes or sessions
+    this.clipboardOrigin = null;
     this.onApply = apply;
     this.tool.value = 'brush';
     this.resolution.value = String(this.bitmap.width);
@@ -281,6 +351,9 @@ export class DecorPaintEditor {
     this.polygon = [];
     this.selection = null;
     this.selectionBeforeDrag = null;
+    this.movingSelection = false;
+    this.clipboard = null;
+    this.clipboardOrigin = null;
     this.onApply = null;
   }
 
@@ -344,6 +417,84 @@ export class DecorPaintEditor {
     this.snapshotForUndo();
     this.bitmap = drawDecorPolygon(this.bitmap, this.polygon, this.drawOptions());
     this.polygon = [];
+    this.paint();
+  }
+
+  private changed(a: DecorBitmap, b: DecorBitmap): boolean {
+    return a.width !== b.width || a.height !== b.height
+      || a.rows.some((row, index) => row !== b.rows[index]);
+  }
+
+  private commitBitmap(next: DecorBitmap): void {
+    if (this.changed(this.bitmap, next)) {
+      this.snapshotForUndo();
+      this.bitmap = next;
+    }
+    this.paint();
+  }
+
+  private dragSelection(event: PointerEvent): void {
+    const next = this.point(event);
+    if (this.movingSelection && this.selectionBeforeDrag && this.snapshot) {
+      const original = this.selectionBeforeDrag;
+      const position = clampDecorOrigin(this.snapshot, original.width, original.height, {
+        x: original.x + next.x - this.start.x,
+        y: original.y + next.y - this.start.y,
+      });
+      this.bitmap = moveDecorRegion(this.snapshot, original, position);
+      this.selection = { ...original, ...position };
+    } else {
+      this.selection = normalizeDecorSelection(this.start, next,
+        this.bitmap.width, this.bitmap.height);
+    }
+    this.paint();
+  }
+
+  private copySelection(): void {
+    if (!this.selection || this.pointer !== null) return;
+    this.clipboard = copyDecorRegion(this.bitmap, this.selection);
+    this.clipboardOrigin = this.clipboard ? { x: this.selection.x, y: this.selection.y } : null;
+    this.paint();
+  }
+
+  private cutSelection(): void {
+    if (!this.selection || this.pointer !== null) return;
+    this.copySelection();
+    this.commitBitmap(eraseDecorRegion(this.bitmap, this.selection));
+  }
+
+  private deleteSelection(): void {
+    if (!this.selection || this.pointer !== null) return;
+    this.commitBitmap(eraseDecorRegion(this.bitmap, this.selection));
+  }
+
+  private pasteSelection(): void {
+    if (!this.clipboard || this.pointer !== null) return;
+    const base = this.selection ?? this.clipboardOrigin ?? { x: 0, y: 0 };
+    const position = clampDecorOrigin(this.bitmap, this.clipboard.width, this.clipboard.height,
+      { x: base.x + 16, y: base.y + 8 });
+    this.commitBitmap(pasteDecorRegion(this.bitmap, this.clipboard, position));
+    this.selection = {
+      x: position.x, y: position.y,
+      width: Math.min(this.clipboard.width, this.bitmap.width - position.x),
+      height: Math.min(this.clipboard.height, this.bitmap.height - position.y),
+    };
+    this.paint();
+  }
+
+  private duplicateSelection(): void {
+    if (!this.selection || this.pointer !== null) return;
+    this.copySelection();
+    this.pasteSelection();
+  }
+
+  private shiftSelection(dx: number, dy: number, step = 1): void {
+    if (!this.selection || this.pointer !== null) return;
+    const selection = this.selection;
+    const position = clampDecorOrigin(this.bitmap, selection.width, selection.height,
+      { x: selection.x + dx * step, y: selection.y + dy * step });
+    this.commitBitmap(moveDecorRegion(this.bitmap, selection, position));
+    this.selection = { ...selection, ...position };
     this.paint();
   }
 
@@ -417,6 +568,11 @@ export class DecorPaintEditor {
     this.status.textContent = `${this.bitmap.width} × ${this.bitmap.height} píxeles · ${decorInkCount(this.bitmap)} pintados · ${this.undo.length} pasos para deshacer${selText}`;
     this.polygonButton.disabled = this.polygon.length < 3;
     this.deselectButton.disabled = !this.selection;
+    for (const action of ['copy', 'cut', 'duplicate', 'delete', 'left', 'right', 'up', 'down'])
+      this.dialog.querySelector<HTMLButtonElement>(`[data-paint="selection-${action}"]`)!
+        .disabled = !this.selection || this.pointer !== null;
+    this.dialog.querySelector<HTMLButtonElement>('[data-paint="selection-paste"]')!
+      .disabled = !this.clipboard || this.pointer !== null;
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="undo"]')!.disabled = !this.undo.length;
     this.dialog.querySelector<HTMLButtonElement>('[data-paint="redo"]')!.disabled = !this.redo.length;
   }
