@@ -43,6 +43,8 @@ Abre `http://127.0.0.1:5173/`; entra en Personalizar paisaje. Verás **Tercer pl
 
 **Última ejecución reportada por el usuario (26/10/2026):** `git pull --ff-only` actualizado correctamente; `npx playwright test tests/e2e/decor-paint.spec.ts` — **10 passed (24.1s)**, cinco escenarios en cada backend `chromium-auto` y `chromium-webgl2`. Las **131 unitarias** y compilación completas pertenecen a una iteración previa de la fase 3; no afirmar que toda la suite se reejecutó tras la ampliación panorámica. No hace falta repetir las E2E ya aprobadas sin cambios funcionales. **Siguiente validación:** jugar y observar visualmente la repetición panorámica, zoom, rendimiento y guardado.
 
+**Parche posterior (26/10/2026):** el usuario detectó manualmente que Círculo y Triángulo trazaban como Pincel, pese a las E2E previas aprobadas. Corregido en GitHub `src/ui/DecorPaintEditor.ts`: solo `brush` y `eraser` usan trazos acumulativos, mientras que `line`, `rectangle`, `circle` y `triangle` regeneran la figura desde el estado inicial. Añadida una E2E explícita para píxeles interiores lejos de la diagonal del arrastre. **Pendiente de ejecutar:** `npx playwright test tests/e2e/decor-paint.spec.ts -g "círculo y triángulo rellenos"` (2 ejecuciones: Chromium automático y WebGL2); comprobación manual rápida. Las 10 E2E anteriores siguen siendo históricas, no validan este nuevo parche.
+
 No anunciar pruebas aprobadas hasta ejecutar realmente estos comandos. Si falla alguna, conservar la salida completa.
 
 ## Publicación
