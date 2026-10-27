@@ -67,7 +67,7 @@ test('cancelar no cambia el dibujo, y deshacer y rehacer conservan la máscara',
   let editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
   let bounds = await editor.locator('canvas').boundingBox();
   await page.mouse.click(bounds!.x + bounds!.width * .35, bounds!.y + bounds!.height * .5);
-  await editor.getByRole('button', { name: 'Cancelar' }).click();
+  await editor.getByRole('button', { name: 'Cancelar', exact: true }).click();
   expect((await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom))
     .foreground?.bitmap).toBeUndefined();
   await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
@@ -252,4 +252,284 @@ test('círculo y triángulo rellenos forman figuras y no trazos libres', async (
     expect(bitmap.rows[filledY]![filledX]).toBe('1');
     expect(bitmap.rows[cornerY]![cornerX]).toBe('0');
   }
+});
+
+
+test('selección rectangular panorámica es visible pero no altera los píxeles ni el historial', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const canvas = editor.locator('canvas');
+  const deselect = editor.getByRole('button', { name: 'Cancelar selección' });
+  const undo = editor.getByRole('button', { name: 'Deshacer' });
+  const status = editor.locator('.decor-paint-status');
+  await expect(editor.getByRole('combobox', { name: 'Resolución del lienzo' })).toHaveValue('2048');
+  await expect(deselect).toBeDisabled();
+
+  await tool.selectOption('rectangle');
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.10, bounds!.y + bounds!.height * 0.20);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.34, bounds!.y + bounds!.height * 0.75, { steps: 7 });
+  await page.mouse.up();
+  const before = await status.innerText();
+  const count = before.match(/(\d+) pintados/)?.[1];
+  expect(count).toBeDefined();
+  expect(Number(count)).toBeGreaterThan(0);
+  await expect(undo).toBeEnabled();
+  const baselineCanvas = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+
+  await tool.selectOption('select');
+  await page.mouse.move(bounds!.x + bounds!.width * 0.82, bounds!.y + bounds!.height * 0.82);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.56, bounds!.y + bounds!.height * 0.27, { steps: 7 });
+  await page.mouse.up();
+  await expect(status).toContainText('selección x=');
+  await expect(status).toContainText(`${count} pintados`);
+  await expect(deselect).toBeEnabled();
+  await expect(undo).toBeEnabled();
+  const overlayCanvas = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+  expect(overlayCanvas).not.toBe(baselineCanvas);
+
+  await deselect.click();
+  await expect(deselect).toBeDisabled();
+  await expect(status).not.toContainText('selección x=');
+  const resetCanvas = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+  expect(resetCanvas).toBe(baselineCanvas);
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const saved = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.foreground!.bitmap!);
+  expect(saved.width).toBe(2048);
+  expect(saved.rows.join('').match(/1/g)?.length).toBe(Number(count));
+});
+
+test('la selección conserva coordenadas con zoom y scroll y se cancela con Escape', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const resolution = editor.getByRole('combobox', { name: 'Resolución del lienzo' });
+  const zoom = editor.getByRole('combobox', { name: 'Zoom del lienzo' });
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const status = editor.locator('.decor-paint-status');
+  const viewport = editor.getByRole('region', { name: 'Área desplazable del dibujo' });
+  await resolution.selectOption('96');
+  await tool.selectOption('select');
+  await zoom.selectOption('4');
+  const historyBeforeSelection = (await status.innerText()).match(/(\d+) pasos para deshacer/)?.[1];
+  expect(historyBeforeSelection).toBe('1'); // resizing from 2048 to 96 is itself undoable.
+  // The dialog itself scrolls on short screens; first bring the canvas region
+  // into view, then scroll inside the panorama, not the outer modal.
+  await viewport.scrollIntoViewIfNeeded();
+
+  const scroll = await viewport.evaluate(node => {
+    node.scrollLeft = Math.round(node.scrollWidth * 0.43);
+    node.scrollTop = Math.round(node.scrollHeight * 0.28);
+    return { left: node.scrollLeft, top: node.scrollTop };
+  });
+  expect(scroll.left).toBeGreaterThan(0);
+  expect(scroll.top).toBeGreaterThan(0);
+  const box = await viewport.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width * 0.25, box!.y + box!.height * 0.22);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width * 0.72, box!.y + box!.height * 0.64, { steps: 8 });
+  await page.mouse.up();
+  const selectedStatus = await status.innerText();
+  const coords = selectedStatus.match(/selección x=(\d+), y=(\d+) · (\d+) × (\d+) px/);
+  expect(coords).not.toBeNull();
+  expect(Number(coords![1])).toBeGreaterThan(0);
+  expect(Number(coords![2])).toBeGreaterThan(0);
+  expect(Number(coords![1]) + Number(coords![3])).toBeLessThanOrEqual(96);
+  expect(Number(coords![2]) + Number(coords![4])).toBeLessThanOrEqual(32);
+  await zoom.selectOption('1');
+  await expect(status).toContainText(coords![0]); // zoom must not rewrite pixel coordinates
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeVisible(); // first Escape deselects; does not close the editor
+  await expect(status).not.toContainText('selección x=');
+  // Deselecting must NOT erase the valid undo step created by changing resolution.
+  await expect(status).toContainText(`${historyBeforeSelection} pasos para deshacer`);
+  await expect(editor.getByRole('button', { name: 'Deshacer' })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(editor).not.toBeVisible();
+});
+
+
+test('regiones antiguas: copia, duplica, corta, pega y deshace sin afectar otros píxeles', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const status = editor.locator('.decor-paint-status');
+  await editor.getByRole('combobox', { name: 'Resolución del lienzo' }).selectOption('96');
+  const canvas = editor.locator('canvas');
+  const drag = async (startX: number, startY: number, endX: number, endY: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    // Controls below the bitmap may have scrolled the dialog since the last drag.
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    const pos = (x: number, y: number) => ({
+      x: bounds!.x + bounds!.width * x, y: bounds!.y + bounds!.height * y,
+    });
+    const from = pos(startX, startY), to = pos(endX, endY);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 7 });
+    await page.mouse.up();
+  };
+  const painted = async () => Number((await status.innerText()).match(/(\d+) pintados/)?.[1] ?? -1);
+  await tool.selectOption('rectangle');
+  await drag(0.10, 0.24, 0.20, 0.51);
+  const originalCount = await painted();
+  expect(originalCount).toBeGreaterThan(0);
+  await tool.selectOption('select');
+  await drag(0.08, 0.17, 0.24, 0.60);
+  await expect(editor.getByRole('button', { name: 'Copiar', exact: true })).toBeEnabled();
+  await editor.getByRole('button', { name: 'Copiar', exact: true }).click();
+  await expect(editor.getByRole('button', { name: 'Pegar', exact: true })).toBeEnabled();
+  expect(await painted()).toBe(originalCount);
+
+  await editor.getByRole('button', { name: 'Duplicar' }).click();
+  expect(await painted()).toBeGreaterThan(originalCount);
+  const doubledCount = await painted();
+  await editor.getByRole('button', { name: 'Deshacer' }).click();
+  expect(await painted()).toBe(originalCount);
+  await editor.getByRole('button', { name: 'Rehacer' }).click();
+  expect(await painted()).toBe(doubledCount);
+  await tool.selectOption('select');
+  await drag(0.06, 0.14, 0.23, 0.61);
+  await editor.getByRole('button', { name: 'Cortar' }).click();
+  expect(await painted()).toBeLessThan(doubledCount);
+  await editor.getByRole('button', { name: 'Pegar', exact: true }).click();
+  expect(await painted()).toBeGreaterThan(0);
+  await editor.getByRole('button', { name: 'Borrar selección' }).click();
+  await expect(editor.getByRole('button', { name: 'Deshacer' })).toBeEnabled();
+  const afterDelete = await painted();
+  await editor.getByRole('button', { name: 'Deshacer' }).click();
+  expect(await painted()).toBeGreaterThanOrEqual(afterDelete);
+});
+
+test('panorama: arrastrar dentro de selección mueve tinta y un solo deshacer revierte el traslado', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const canvas = editor.locator('canvas');
+  const drag = async (a: number, b: number, c: number, d: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    const position = (x: number, y: number) =>
+      ({ x: bounds!.x + bounds!.width * x, y: bounds!.y + bounds!.height * y });
+    const from = position(a, b), to = position(c, d);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 9 });
+    await page.mouse.up();
+  };
+  const status = editor.locator('.decor-paint-status');
+  const count = async () => Number((await status.innerText()).match(/(\d+) pintados/)?.[1] ?? -1);
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  await tool.selectOption('rectangle');
+  await drag(.11, .22, .18, .55);
+  const originalInk = await count();
+  expect(originalInk).toBeGreaterThan(0);
+  await tool.selectOption('select');
+  await drag(.08, .16, .21, .62);
+  const originalUndoCount = Number((await status.innerText()).match(/(\d+) pasos para deshacer/)?.[1]);
+  await drag(.14, .38, .49, .38);
+  expect(await count()).toBe(originalInk);
+  await expect(status).toContainText('selección x=');
+  expect(Number((await status.innerText()).match(/(\d+) pasos para deshacer/)?.[1]))
+    .toBe(originalUndoCount + 1);
+  await editor.getByRole('button', { name: 'Deshacer' }).click();
+  expect(await count()).toBe(originalInk);
+  await editor.getByRole('button', { name: 'Rehacer' }).click();
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const bitmap = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.foreground!.bitmap!);
+  expect(bitmap.width).toBe(2048);
+  expect(bitmap.rows[Math.floor(bitmap.height * .40)]![Math.floor(bitmap.width * .14)]).toBe('0');
+  expect(bitmap.rows[Math.floor(bitmap.height * .40)]![Math.floor(bitmap.width * .49)]).toBe('1');
+});
+
+
+test('duplicado superpuesto se mueve solo y restituye los píxeles originales debajo', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  await editor.getByRole('combobox', { name: 'Resolución del lienzo' }).selectOption('96');
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const canvas = editor.locator('canvas');
+  const drag = async (ax: number, ay: number, bx: number, by: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const r = await canvas.boundingBox();
+    expect(r).not.toBeNull();
+    await page.mouse.move(r!.x + r!.width * ax, r!.y + r!.height * ay);
+    await page.mouse.down();
+    await page.mouse.move(r!.x + r!.width * bx, r!.y + r!.height * by, { steps: 9 });
+    await page.mouse.up();
+  };
+  // A wide original rectangle will overlap its offset duplicated region.
+  await tool.selectOption('rectangle');
+  await drag(.16, .15, .50, .50);
+  await tool.selectOption('select');
+  await drag(.12, .10, .54, .55);
+  await editor.getByRole('button', { name: 'Duplicar' }).click();
+  await expect(editor.locator('.decor-paint-status')).toContainText('selección x=');
+  // Drag INSIDE the offset duplicate; movement must not collect original ink.
+  await drag(.62, .66, .80, .66);
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+
+  const saved = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.foreground!.bitmap!);
+  expect(saved.width).toBe(96);
+  expect(saved.rows[14]![30]).toBe('1'); // original: still fully preserved
+  expect(saved.rows[20]![32]).toBe('0'); // no ghost from duplicate's old position
+  expect(saved.rows[20]![80]).toBe('1'); // only the duplicate reached its destination
+});
+
+test('deshacer y rehacer mantienen la independencia del duplicado flotante', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  await editor.getByRole('combobox', { name: 'Resolución del lienzo' }).selectOption('96');
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const canvas = editor.locator('canvas');
+  const drag = async (ax: number, ay: number, bx: number, by: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const b = await canvas.boundingBox();
+    expect(b).not.toBeNull();
+    await page.mouse.move(b!.x + b!.width * ax, b!.y + b!.height * ay);
+    await page.mouse.down();
+    await page.mouse.move(b!.x + b!.width * bx, b!.y + b!.height * by, { steps: 7 });
+    await page.mouse.up();
+  };
+  await tool.selectOption('rectangle');
+  await drag(.16, .15, .50, .50);
+  await tool.selectOption('select');
+  await drag(.12, .10, .54, .55);
+  await editor.getByRole('button', { name: 'Duplicar' }).click();
+  await editor.getByRole('button', { name: 'Deshacer' }).click();
+  await editor.getByRole('button', { name: 'Rehacer' }).click();
+  // After redo the floating selection must remain movable without collecting ink below.
+  await drag(.62, .66, .80, .66);
+  await editor.getByRole('button', { name: 'Deshacer' }).click(); // return to duplicated position
+  await editor.getByRole('button', { name: 'Rehacer' }).click(); // move duplicate again
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const saved = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.midground!.bitmap!);
+  expect(saved.rows[14]![30]).toBe('1');
+  expect(saved.rows[20]![32]).toBe('0');
+  expect(saved.rows[20]![80]).toBe('1');
 });

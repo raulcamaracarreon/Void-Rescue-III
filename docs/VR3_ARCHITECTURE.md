@@ -91,3 +91,12 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 - Al transformar entre formatos de proporción 3:1 y 8:1, el dibujo se mantiene en escala proporcional: se agrega espacio transparente lateral cuando corresponde y se alinean verticalmente los motivos más pequeños hacia el suelo. El remuestreo de reducción conserva los píxeles pintados para evitar pérdida de líneas finas.
 - Límite deliberado de 2048×256 para evitar lienzos demasiado grandes antes de una evaluación de rendimiento y de almacenamiento en bibliotecas extensas.
 - **Estado:** código implementado, pruebas nuevas añadidas y **pendiente de ejecución local**; no declarar la ampliación validada ni fusionar todavía.
+
+
+## Cierre de las herramientas de selección — fase 3 (26/10/2026)
+
+- `DecorDrawing.ts` incorpora funciones puras para seleccionar, copiar, borrar, pegar y mover regiones, limitadas al lienzo y con pegado transparente.
+- `DecorPaintEditor.ts` incorpora seleccionar, cortar, pegar, duplicar, mover con arrastre/flechas y deshacer/rehacer. El portapapeles es interno a cada sesión/plano.
+- Para evitar que una copia solapada arrastre píxeles antiguos, el editor conserva temporalmente una **copia flotante**: bitmap base anterior, máscara del fragmento y posición. Al moverla, recompone desde esa base. Se consolida al deseleccionar, cambiar herramienta o aplicar; no se persiste como una capa nueva ni cambia la serialización.
+- **Validación:** aceptación visual; `npm run build` aprobado; **16/16** Vitest y **8/8** E2E focalizadas tras el último parche, en ambos backends. Las **20/20** E2E generales pertenecen a la iteración previa a la corrección.
+- Se cierra el incremento funcional de Paint/selección. Permanecen en backlog escalado/transformación avanzada, exportación/importación JSON versionada y QA de accesibilidad, oclusión y rendimiento. Próximo hito: **fase 4, perfiles jugables de vehículos**, sin reescribir física, rescate o puntuación.

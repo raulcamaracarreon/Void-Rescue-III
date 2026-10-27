@@ -165,6 +165,17 @@
 .decor-paint-buttons { justify-content: flex-end; }
 .decor-paint-buttons .primary { background: #285344; }
 .decor-paint-toolbar button:disabled { opacity: .32; }
+.decor-paint-selection-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .35em;
+  margin: .55em 0; font: .78em var(--mono);
+}
+.decor-paint-selection-toolbar button {
+  padding: .36em .55em; font: inherit; border: 1px solid #80bdad;
+  background: #153336; color: #c4eee0;
+}
+.decor-paint-selection-toolbar button:disabled { opacity: .32; }
+.decor-paint-selection-label { color: #ffe27c; margin-right: .2em; }
+
 .decor-paint-viewport {
   width: 100%; max-height: min(420px, 54dvh);
   overflow: auto; overscroll-behavior: contain;

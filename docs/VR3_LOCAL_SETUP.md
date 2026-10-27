@@ -53,9 +53,86 @@ No anunciar pruebas aprobadas hasta ejecutar realmente estos comandos. Si falla 
 
 El usuario **autorizó fusionar el incremento Paint a `main` el 26/10/2026** después de la aceptación visual. La integración se hará mediante Pull Request, conservando la historia; la rama de trabajo se mantiene para consulta y no debe eliminarse automáticamente. Pages y los pipelines CI continúan **manuales**; no habilitar GitHub Actions.
 
+## Resultados y correcciones de la Entrega A (26/10/2026)
+
+El usuario ejecutó build, Vitest y los 16 E2E de Paint/selección en la rama `feat/phase3-selection-tools`. **Build aprobado y suite unitaria específica aprobada**. Playwright terminó **12/16 aprobadas**, cuatro fallidas por dos causas repetidas en ambos backends:
+
+1. El localizador `getByRole('button', { name: 'Cancelar' })` coincide con los botones «Cancelar» y «Cancelar selección». Corrección: usar `exact: true` para el botón de cerrar.
+2. Después de usar un control de zoom, Escape no quitaba la selección (el navegador podía consumir la pulsación antes de disparar `dialog.cancel`). Corrección: manejar Escape en la fase de captura del `keydown` del diálogo; primera pulsación cancela selección, segunda cierra el editor. La prueba además suponía erróneamente que deshacer estaría deshabilitado, aunque cambiar resolución de 2048×256 a 96×32 genera legítimamente un paso; ahora comprueba la conservación de ese paso.
+
+**Parches validados en el equipo del usuario el 26/10/2026:** `npx playwright test tests/e2e/decor-paint.spec.ts -g "cancelar no cambia|la selección conserva"`: **4/4 pruebas aprobadas (9.3 s)**, dos en Chromium automático y dos en WebGL2. La sincronización `git -c gc.auto=0 fetch origin` y `git merge --ff-only origin/feat/phase3-selection-tools` también fue correcta. Comandos ejecutados (registro histórico):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase3-selection-tools
+npx playwright test tests/e2e/decor-paint.spec.ts -g "cancelar no cambia|la selección conserva"
+```
+
+No volver a ejecutar toda la batería salvo que esta corrección provoque otro defecto.
+
+## Entrega A de selección rectangular — rama aislada (26/10/2026)
+
+**Estado:** implementada en GitHub en `feat/phase3-selection-tools`; **compilación y unitarias aprobadas en la primera ejecución, 12/16 E2E generales inicialmente y las 4/4 regresiones corregidas después aprobadas**. El usuario **aceptó visualmente la Entrega A el 26/10/2026** («ok funciona conforme lo esperado»). La batería completa de 16 no se repitió tras el parche, pero los cuatro casos afectados sí quedaron aprobados. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
+
+Para revisar esta primera entrega:
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git switch feat/phase3-selection-tools
+git merge --ff-only origin/feat/phase3-selection-tools
+npm run build
+npx vitest run tests/unit/decor-paint.test.ts
+npx playwright test tests/e2e/decor-paint.spec.ts
+npm run dev
+```
+
+En el editor Paint, elegir «Seleccionar región», arrastrar desde cualquier esquina y observar un recuadro de puntos amarillo con dimensiones y posición en el estado del lienzo. Comprobar que «Cancelar selección» borra solo el recuadro y que Escape lo cancela antes de cerrar el diálogo. Usar zoom 4× y desplazamiento de la zona visible: la selección debe corresponder a los píxeles bajo el cursor. Seleccionar por sí solo no altera la máscara, ni añade pasos al historial. Al cambiar de herramienta o resolución se cancela la selección. La edición de la región (cortar, copiar, mover, etc.) se incorporará en una **Entrega B** tras validar este comportamiento.
+
 ## Continuación posterior a la integración (26/10/2026)
 
-- `main` recibe las capas decorativas, gradientes y el editor Paint probados en `feat/phase3-paint-editor` una vez completado el Pull Request autorizado.
+- `main` **ya recibió** las capas decorativas, gradientes y el editor Paint probados mediante Pull Request #1, merge commit `6ae999a5d46947b9717a8e5d074512fc1fe0f0ec` (26/10/2026). El usuario confirmó fast-forward local de `main` a ese commit.
 - Siguiente incremento en rama aislada: herramienta de selección rectangular de píxeles, mover, copiar/pegar, duplicar y borrar selecciones, con historial reversible; después escalar/rotar e importar/exportar JSON versionado.
 - Archivos locales no rastreados `MD_Continuidad/` y capturas en `docs/screenshots/` deben conservarse al cambiar ramas. No ejecutar `git clean` sobre ellos.
 - Si reaparecen avisos de mantenimiento de Git `Unlink ... .idx/.pack failed`, no borrar packs manualmente; no bloquean por sí mismos el resultado de Playwright.
+
+## Corte actual — aceptación de selección y continuidad (26/10/2026)
+
+- **Entrega A:** selección rectangular, zoom/scroll, cancelación y delimitación: pruebas focalizadas **4/4** tras el primer parche y aceptación visual del usuario.
+- **Entrega B:** mover, duplicar, cortar, copiar, pegar, borrar y deshacer/rehacer. La revisión anterior pasó **20/20 E2E** en Chromium automático/WebGL2 (44.7 s), pero el usuario descubrió un defecto de duplicación superpuesta. Se corrigió mediante una **copia flotante independiente** que preserva el fondo original; el usuario acaba de confirmar visualmente que **las herramientas ahora funcionan correctamente**.
+- **Validación final tras corregir copias flotantes:** build aprobado, **16/16** unitarias específicas y **8/8** E2E focalizadas (20.3 s) en ambos backends. Los 20/20 E2E históricos (44.7 s) son anteriores al parche y no se presentarán como reejecutados.
+- **Git:** fusión de la entrega A+B a `main` **autorizada expresamente** por el usuario mediante Pull Request, después de aceptación manual y pruebas. Preservar el historial, sin activar workflows ni publicar Pages.
+- **Ruta futura:** decidir si VR3 ofrecerá variantes de vehículo en una misma partida o modos/episodios; **fase 4:** contrato de vehículos y primer helicóptero, preservando nave y reglas actuales; **fase 5:** nuevas amenazas, entidades y ambientes. Exportación/importación JSON, transformación/escalado y QA visual pendiente de fases 1/2/3 quedan registradas, no declaradas completadas.
+
+## Entrega B — manipulación de regiones (26/10/2026)
+
+**Estado:** la Entrega B completó las pruebas anteriores con **20/20 E2E aprobadas en 44.7 s** (Chromium automático y WebGL2). Sin embargo, la revisión manual detectó un defecto de duplicación superpuesta que motivó una corrección posterior, **aprobada en build, 16/16 unitarias y 8/8 E2E focalizadas**. La entrega A ya fue aceptada visualmente. Continúa aislada de `main` y no se habilitará CI automático.
+
+La barra de operaciones **Región** aparece debajo del lienzo. Selecciona con la herramienta «Seleccionar región» y utiliza **Copiar, Cortar, Pegar, Duplicar o Borrar selección**. Pegar y duplicar desplazan por defecto la región 16 píxeles a la derecha y 8 hacia abajo (sin salirse del lienzo); el color vacío del fragmento se considera transparente. Para **mover** un fragmento, arrastra desde dentro del rectángulo amarillo hacia la nueva posición; también hay botones de flechas para cambios de un píxel. Cada movimiento por arrastre y cada operación de edición debe generar como máximo un paso de deshacer. Copiar y cancelar selección no modifican el bitmap. El portapapeles es interno y se descarta al cambiar de plano/abrir sesión nueva. No usa portapapeles del sistema.
+
+**Validación nueva necesaria** (cambios funcionales desde las E2E ya aprobadas):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase3-selection-tools
+npm run build
+npx vitest run tests/unit/decor-paint.test.ts
+npx playwright test tests/e2e/decor-paint.spec.ts
+```
+
+**Corrección de copias superpuestas (26/10/2026):** antes, «Duplicar» pegaba inmediatamente la máscara monocroma en el bitmap y el siguiente arrastre movía el rectángulo ya fusionado, incluyendo la tinta original. El editor ahora mantiene la copia como **selección flotante** (bitmap de fondo previo + fragmento binario + posición). Al desplazarla restaura la zona que tenía debajo, incluso si la copia se solapó con el original. Deshacer/rehacer conservan ese estado. La copia se incorpora definitivamente cuando se cancela la selección, se cambia de herramienta o se aplica el dibujo. En el estado del editor aparece «copia flotante» mientras es independiente. No se añade persistencia de capas ni se modifica el formato de los paisajes.
+
+**Pruebas del parche ya aprobadas** (comando histórico; no repetir sin nuevos cambios):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase3-selection-tools
+npm run build
+npx vitest run tests/unit/decor-paint.test.ts
+npx playwright test tests/e2e/decor-paint.spec.ts -g "duplicado superpuesto|independencia del duplicado flotante|regiones antiguas|panorama: arrastrar"
+```
+
+Playwright aprobó **8/8 casos focalizados en 20.3 s** (cuatro escenarios por backend); el usuario confirmó visualmente que la copia ya no arrastra el original. Las 20 E2E generales corresponden a la versión anterior.
