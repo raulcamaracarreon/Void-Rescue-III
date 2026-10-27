@@ -165,11 +165,20 @@
 .decor-paint-buttons { justify-content: flex-end; }
 .decor-paint-buttons .primary { background: #285344; }
 .decor-paint-toolbar button:disabled { opacity: .32; }
-.decor-paint-canvas {
-  display: block; width: 100%; height: auto; aspect-ratio: 3 / 1;
-  background: #082024; border: 1px solid #93d1be;
-  image-rendering: pixelated; touch-action: none; cursor: crosshair;
+.decor-paint-viewport {
+  width: 100%; max-height: min(420px, 54dvh);
+  overflow: auto; overscroll-behavior: contain;
+  border: 1px solid #93d1be; background: #082024;
 }
+.decor-paint-canvas {
+  display: block; width: 100%; max-width: none; height: auto;
+  aspect-ratio: auto; border: 0;
+  background: #082024; image-rendering: pixelated;
+  touch-action: none; cursor: crosshair;
+}
+.decor-paint-toolbar input[type=range] { width: 102px; accent-color: #a4f5d6; }
+.decor-paint-toolbar input[type=checkbox] { accent-color: #a4f5d6; }
+.decor-paint-toolbar select { max-width: 175px; }
 .decor-paint-canvas:focus-visible { outline: 2px solid #e2fff0; outline-offset: 3px; }
 .decor-paint-status { font: .8em var(--mono); color: #afcbc6; }
 @media(max-width: 760px) {
