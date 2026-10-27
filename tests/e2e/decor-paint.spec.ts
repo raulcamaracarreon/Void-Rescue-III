@@ -44,6 +44,7 @@ test('permite opacidad al 100 % y edita dibujos diferentes en ambos planos', asy
   await page.mouse.down();
   await page.mouse.move(midBounds!.x + midBounds!.width * .80, midBounds!.y + midBounds!.height * .85, { steps: 5 });
   await page.mouse.up();
+  await expect(editor.locator('.decor-paint-status')).not.toContainText('· 0 pintados ·');
   await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
 
   const afterMiddle = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom);
@@ -91,17 +92,17 @@ test('usa panorama 2048×256 por defecto, cambia resolución sin destruir dibujo
   let editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
   let resolution = editor.getByRole('combobox', { name: 'Resolución del lienzo' });
   await expect(resolution).toHaveValue('2048');
-  await expect(editor.getByRole('status')).toContainText('2048 × 256');
+  await expect(editor.locator('.decor-paint-status')).toContainText('2048 × 256');
   const bounds = await editor.locator('canvas').boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width * 0.2, bounds!.y + bounds!.height * 0.25);
   await page.mouse.down();
   await page.mouse.move(bounds!.x + bounds!.width * 0.65, bounds!.y + bounds!.height * 0.7, { steps: 10 });
   await page.mouse.up();
-  await expect(editor.getByRole('status')).toContainText('pintados');
+  await expect(editor.locator('.decor-paint-status')).toContainText('pintados');
 
   await resolution.selectOption('1024');
-  await expect(editor.getByRole('status')).toContainText('1024 × 128');
+  await expect(editor.locator('.decor-paint-status')).toContainText('1024 × 128');
   await editor.getByRole('button', { name: 'Deshacer' }).click();
   await expect(resolution).toHaveValue('2048');
   await editor.getByRole('button', { name: 'Rehacer' }).click();
@@ -110,7 +111,7 @@ test('usa panorama 2048×256 por defecto, cambia resolución sin destruir dibujo
   await resolution.selectOption('384');
   await resolution.selectOption('192');
   await resolution.selectOption('96');
-  await expect(editor.getByRole('status')).toContainText('96 × 32');
+  await expect(editor.locator('.decor-paint-status')).toContainText('96 × 32');
   await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
 
   const first = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom.midground!.bitmap!);
@@ -135,6 +136,29 @@ test('usa panorama 2048×256 por defecto, cambia resolución sin destruir dibujo
 });
 
 
+test('permite pintar el extremo derecho del panorama con zoom ajustado a pantalla', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  await expect(editor.getByRole('combobox', { name: 'Zoom del lienzo' })).toHaveValue('1');
+  const canvas = editor.locator('canvas');
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  // The 80%-of-width drawing previously landed outside a 2x zoomed viewport.
+  const from = { x: bounds!.x + bounds!.width * 0.62, y: bounds!.y + bounds!.height * 0.25 };
+  const to = { x: bounds!.x + bounds!.width * 0.83, y: bounds!.y + bounds!.height * 0.75 };
+  await editor.getByRole('combobox', { name: 'Herramienta de dibujo' }).selectOption('rectangle');
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 8 });
+  await page.mouse.up();
+  await expect(editor.locator('.decor-paint-status')).not.toContainText('· 0 pintados ·');
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const saved = await page.evaluate(() => window.__VOID_RESCUE__!.getState().landscape.custom.midground!.bitmap!);
+  expect(saved.rows.some(row => row.slice(Math.floor(saved.width * 0.6)).includes('1'))).toBe(true);
+});
+
 test('incorpora zoom, pincel grueso, elipse, triángulo y polígono relleno', async ({ page }) => {
   await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
   const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
@@ -143,11 +167,14 @@ test('incorpora zoom, pincel grueso, elipse, triángulo y polígono relleno', as
   const zoom = dialog.getByRole('combobox', { name: 'Zoom del lienzo' });
   const canvas = dialog.locator('canvas');
   await expect(dialog.getByRole('combobox', { name: 'Resolución del lienzo' })).toHaveValue('2048');
+  await expect(zoom).toHaveValue('1');
+  await dialog.getByRole('button', { name: 'Acercar lienzo' }).click();
   await expect(zoom).toHaveValue('2');
   await dialog.getByRole('button', { name: 'Acercar lienzo' }).click();
   await expect(zoom).toHaveValue('4');
   await expect(canvas).toHaveCSS('width', /.+px/);
   await dialog.getByRole('button', { name: 'Alejar lienzo' }).click();
+  await expect(zoom).toHaveValue('2');
   await zoom.selectOption('1');
 
   await dialog.getByRole('slider', { name: 'Grosor del pincel' }).evaluate(element => {
