@@ -53,9 +53,28 @@ No anunciar pruebas aprobadas hasta ejecutar realmente estos comandos. Si falla 
 
 El usuario **autorizó fusionar el incremento Paint a `main` el 26/10/2026** después de la aceptación visual. La integración se hará mediante Pull Request, conservando la historia; la rama de trabajo se mantiene para consulta y no debe eliminarse automáticamente. Pages y los pipelines CI continúan **manuales**; no habilitar GitHub Actions.
 
+## Entrega A de selección rectangular — rama aislada (26/10/2026)
+
+**Estado:** implementada en GitHub en `feat/phase3-selection-tools`, **pendiente de ejecutar build y pruebas locales**. La rama parte de `main` ya fusionado (PR #1, commit `6ae999a`); `main` permanece estable. No activar GitHub Actions.
+
+Para revisar esta primera entrega:
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git switch feat/phase3-selection-tools
+git merge --ff-only origin/feat/phase3-selection-tools
+npm run build
+npx vitest run tests/unit/decor-paint.test.ts
+npx playwright test tests/e2e/decor-paint.spec.ts
+npm run dev
+```
+
+En el editor Paint, elegir «Seleccionar región», arrastrar desde cualquier esquina y observar un recuadro de puntos amarillo con dimensiones y posición en el estado del lienzo. Comprobar que «Cancelar selección» borra solo el recuadro y que Escape lo cancela antes de cerrar el diálogo. Usar zoom 4× y desplazamiento de la zona visible: la selección debe corresponder a los píxeles bajo el cursor. Seleccionar por sí solo no altera la máscara, ni añade pasos al historial. Al cambiar de herramienta o resolución se cancela la selección. La edición de la región (cortar, copiar, mover, etc.) se incorporará en una **Entrega B** tras validar este comportamiento.
+
 ## Continuación posterior a la integración (26/10/2026)
 
-- `main` recibe las capas decorativas, gradientes y el editor Paint probados en `feat/phase3-paint-editor` una vez completado el Pull Request autorizado.
+- `main` **ya recibió** las capas decorativas, gradientes y el editor Paint probados mediante Pull Request #1, merge commit `6ae999a5d46947b9717a8e5d074512fc1fe0f0ec` (26/10/2026). El usuario confirmó fast-forward local de `main` a ese commit.
 - Siguiente incremento en rama aislada: herramienta de selección rectangular de píxeles, mover, copiar/pegar, duplicar y borrar selecciones, con historial reversible; después escalar/rotar e importar/exportar JSON versionado.
 - Archivos locales no rastreados `MD_Continuidad/` y capturas en `docs/screenshots/` deben conservarse al cambiar ramas. No ejecutar `git clean` sobre ellos.
 - Si reaparecen avisos de mantenimiento de Git `Unlink ... .idx/.pack failed`, no borrar packs manualmente; no bloquean por sí mismos el resultado de Playwright.
