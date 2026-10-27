@@ -458,3 +458,78 @@ test('panorama: arrastrar dentro de selección mueve tinta y un solo deshacer re
   expect(bitmap.rows[Math.floor(bitmap.height * .40)]![Math.floor(bitmap.width * .14)]).toBe('0');
   expect(bitmap.rows[Math.floor(bitmap.height * .40)]![Math.floor(bitmap.width * .49)]).toBe('1');
 });
+
+
+test('duplicado superpuesto se mueve solo y restituye los píxeles originales debajo', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  await editor.getByRole('combobox', { name: 'Resolución del lienzo' }).selectOption('96');
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const canvas = editor.locator('canvas');
+  const drag = async (ax: number, ay: number, bx: number, by: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const r = await canvas.boundingBox();
+    expect(r).not.toBeNull();
+    await page.mouse.move(r!.x + r!.width * ax, r!.y + r!.height * ay);
+    await page.mouse.down();
+    await page.mouse.move(r!.x + r!.width * bx, r!.y + r!.height * by, { steps: 9 });
+    await page.mouse.up();
+  };
+  // A wide original rectangle will overlap its offset duplicated region.
+  await tool.selectOption('rectangle');
+  await drag(.16, .15, .50, .50);
+  await tool.selectOption('select');
+  await drag(.12, .10, .54, .55);
+  await editor.getByRole('button', { name: 'Duplicar' }).click();
+  await expect(editor.locator('.decor-paint-status')).toContainText('selección x=');
+  // Drag INSIDE the offset duplicate; movement must not collect original ink.
+  await drag(.62, .66, .80, .66);
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+
+  const saved = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.foreground!.bitmap!);
+  expect(saved.width).toBe(96);
+  expect(saved.rows[14]![30]).toBe('1'); // original: still fully preserved
+  expect(saved.rows[20]![32]).toBe('0'); // no ghost from duplicate's old position
+  expect(saved.rows[20]![80]).toBe('1'); // only the duplicate reached its destination
+});
+
+test('deshacer y rehacer mantienen la independencia del duplicado flotante', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  await editor.getByRole('combobox', { name: 'Resolución del lienzo' }).selectOption('96');
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const canvas = editor.locator('canvas');
+  const drag = async (ax: number, ay: number, bx: number, by: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const b = await canvas.boundingBox();
+    expect(b).not.toBeNull();
+    await page.mouse.move(b!.x + b!.width * ax, b!.y + b!.height * ay);
+    await page.mouse.down();
+    await page.mouse.move(b!.x + b!.width * bx, b!.y + b!.height * by, { steps: 7 });
+    await page.mouse.up();
+  };
+  await tool.selectOption('rectangle');
+  await drag(.16, .15, .50, .50);
+  await tool.selectOption('select');
+  await drag(.12, .10, .54, .55);
+  await editor.getByRole('button', { name: 'Duplicar' }).click();
+  await editor.getByRole('button', { name: 'Deshacer' }).click();
+  await editor.getByRole('button', { name: 'Rehacer' }).click();
+  // After redo the floating selection must remain movable without collecting ink below.
+  await drag(.62, .66, .80, .66);
+  await editor.getByRole('button', { name: 'Deshacer' }).click(); // return to duplicated position
+  await editor.getByRole('button', { name: 'Rehacer' }).click(); // move duplicate again
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const saved = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.midground!.bitmap!);
+  expect(saved.rows[14]![30]).toBe('1');
+  expect(saved.rows[20]![32]).toBe('0');
+  expect(saved.rows[20]![80]).toBe('1');
+});
