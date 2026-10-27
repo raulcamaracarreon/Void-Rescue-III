@@ -40,6 +40,8 @@ Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar
 
 **Aceptación manual (26/10/2026):** el usuario confirmó que todas las herramientas probadas funcionan, incluidos círculo y triángulo. Autorizó integrar el incremento a `main` y continuar el roadmap. Próxima rama: selección rectangular, traslado, copia/pegado y duplicación de píxeles; la exportación/importación queda para un incremento posterior.
 
+**Entrega A de selección (rama `feat/phase3-selection-tools`, pendiente de pruebas locales):** se agregó una herramienta «Seleccionar región» con rectángulo visible independiente de los píxeles, cancelación por botón/Escape, lectura de coordenadas y soporte de zoom/desplazamiento. No modifica el dibujo ni el historial. Tras validarla, se implementarán las operaciones de mover, cortar, copiar y duplicar.
+
 **Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
 ## Qué funciona como base
