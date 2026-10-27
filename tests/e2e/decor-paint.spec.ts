@@ -209,3 +209,47 @@ test('incorpora zoom, pincel grueso, elipse, triángulo y polígono relleno', as
   expect(style.foreground?.bitmap?.height).toBe(256);
   expect(style.foreground?.bitmap?.rows.join('')).toContain('1');
 });
+
+
+test('círculo y triángulo rellenos forman figuras y no trazos libres', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+
+  for (const item of [
+    { plane: 'primer plano', field: 'foreground', tool: 'circle',
+      left: 0.10, right: 0.25, top: 0.16, bottom: 0.82,
+      insideX: 0.175, insideY: 0.30 },
+    { plane: 'tercer plano', field: 'midground', tool: 'triangle',
+      left: 0.42, right: 0.65, top: 0.20, bottom: 0.80,
+      insideX: 0.535, insideY: 0.65 },
+  ] as const) {
+    await landscape.getByRole('button', { name: `Dibujar ${item.plane}` }).click();
+    const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+    await expect(editor.getByRole('combobox', { name: 'Zoom del lienzo' })).toHaveValue('1');
+    await editor.getByRole('combobox', { name: 'Herramienta de dibujo' }).selectOption(item.tool);
+    await editor.getByRole('checkbox', { name: 'Rellenar figura' }).check();
+    const canvas = editor.locator('canvas');
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    await page.mouse.move(bounds!.x + bounds!.width * item.left,
+      bounds!.y + bounds!.height * item.top);
+    await page.mouse.down();
+    await page.mouse.move(bounds!.x + bounds!.width * item.right,
+      bounds!.y + bounds!.height * item.bottom, { steps: 9 });
+    await page.mouse.up();
+    await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+
+    const bitmap = await page.evaluate(
+      (field) => window.__VOID_RESCUE__!.getState().landscape.custom[field]!.bitmap!,
+      item.field,
+    );
+    const filledY = Math.floor(bitmap.height * item.insideY);
+    const filledX = Math.floor(bitmap.width * item.insideX);
+    const cornerY = Math.floor(bitmap.height * item.top);
+    const cornerX = Math.floor(bitmap.width * item.left);
+    // Interior point intentionally lies away from the drag diagonal. A freehand
+    // stroke may paint along that diagonal, but cannot fill this interior.
+    expect(bitmap.rows[filledY]![filledX]).toBe('1');
+    expect(bitmap.rows[cornerY]![cornerX]).toBe('0');
+  }
+});
