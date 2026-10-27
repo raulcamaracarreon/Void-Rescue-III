@@ -25,16 +25,20 @@ export interface LandscapeLayer {
 
 export type ForegroundKind = 'trees' | 'fence' | 'grille' | 'buildings' | 'drawing';
 
-/** Four bounded 3:1 mask resolutions; the default is 288×96.
- * Legacy 96×32 v1 masks remain valid and are never resized on load.
- * Bits store silhouette coverage only (1 painted, 0 transparent), not colors.
+/** Legacy 3:1 masks are kept untouched. New panoramas use 8:1, allowing
+ * an entire screen or more between motif repeats at the reference camera size.
+ * 2048×256 is the default for new drawings; 4096×512 is intentionally excluded
+ * until storage and GPU limits for huge user libraries are addressed.
  */
-export const DECOR_BITMAP_WIDTHS = [96, 192, 288, 384] as const;
+export const DECOR_BITMAP_WIDTHS = [96, 192, 288, 384, 512, 1024, 2048] as const;
 export type DecorBitmapWidth = (typeof DECOR_BITMAP_WIDTHS)[number];
-export const DECOR_BITMAP_WIDTH = 288;
-export const DECOR_BITMAP_HEIGHT = 96;
+export const DECOR_BITMAP_WIDTH = 2048;
+export const DECOR_BITMAP_HEIGHT = 256;
 export function isDecorBitmapWidth(value: unknown): value is DecorBitmapWidth {
   return typeof value === 'number' && DECOR_BITMAP_WIDTHS.some(width => width === value);
+}
+export function decorBitmapHeight(width: number): number {
+  return width <= 384 ? width / 3 : width / 8;
 }
 export interface DecorBitmap {
   version: 1;
@@ -44,7 +48,7 @@ export interface DecorBitmap {
 }
 export function blankDecorBitmap(width: number = DECOR_BITMAP_WIDTH): DecorBitmap {
   const safeWidth = isDecorBitmapWidth(width) ? width : DECOR_BITMAP_WIDTH;
-  const height = safeWidth / 3;
+  const height = decorBitmapHeight(safeWidth);
   return {
     version: 1, width: safeWidth, height,
     rows: Array.from({ length: height }, () => '0'.repeat(safeWidth)),
@@ -54,7 +58,7 @@ export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
   const fallback = blankDecorBitmap();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
   const v = value as Record<string, unknown>;
-  if (v.version !== 1 || !isDecorBitmapWidth(v.width) || v.height !== v.width / 3
+  if (v.version !== 1 || !isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)
     || !Array.isArray(v.rows) || v.rows.length !== v.height) return fallback;
   return {
     version: 1, width: v.width, height: v.height,
