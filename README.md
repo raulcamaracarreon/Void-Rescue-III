@@ -38,6 +38,8 @@ Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar
 
 **Implementado en GitHub y validado con 10/10 pruebas E2E del editor panorámico.** Una revisión manual posterior detectó un error de trazo en círculo/triángulo: ahora las figuras se reconstruyen desde el inicio del arrastre, mientras que solo pincel y borrador acumulan segmentos. La prueba específica de figuras rellenas pasó **2/2 en dos ejecuciones** (Chromium automático y WebGL2, 26/10/2026). Sigue pendiente inspección visual durante una partida. **Sin fusión a `main`.**
 
+**Aceptación manual (26/10/2026):** el usuario confirmó que todas las herramientas probadas funcionan, incluidos círculo y triángulo. Autorizó integrar el incremento a `main` y continuar el roadmap. Próxima rama: selección rectangular, traslado, copia/pegado y duplicación de píxeles; la exportación/importación queda para un incremento posterior.
+
 **Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
 ## Qué funciona como base
