@@ -475,8 +475,14 @@ export class DecorPaintEditor {
   private pasteSelection(): void {
     if (!this.clipboard || this.pointer !== null) return;
     const base = this.selection ?? this.clipboardOrigin ?? { x: 0, y: 0 };
-    const position = clampDecorOrigin(this.bitmap, this.clipboard.width, this.clipboard.height,
-      { x: base.x + 16, y: base.y + 8 });
+    const maxX = Math.max(0, this.bitmap.width - this.clipboard.width);
+    const maxY = Math.max(0, this.bitmap.height - this.clipboard.height);
+    // Prefer a visible right/down offset, but move left/up when the selected
+    // region touches the canvas edge; duplicating at the edge must not be inert.
+    const position = clampDecorOrigin(this.bitmap, this.clipboard.width, this.clipboard.height, {
+      x: base.x + 16 <= maxX ? base.x + 16 : Math.max(0, base.x - 16),
+      y: base.y + 8 <= maxY ? base.y + 8 : Math.max(0, base.y - 8),
+    });
     this.commitBitmap(pasteDecorRegion(this.bitmap, this.clipboard, position));
     this.selection = {
       x: position.x, y: position.y,
