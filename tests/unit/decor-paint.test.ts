@@ -104,6 +104,26 @@ describe('fase 3 — siluetas de mapa de bits', () => {
     expect(moveDecorRegion(scene, select, { x: 10, y: 6 }).rows).toEqual(scene.rows);
   });
 
+  it('mueve una copia superpuesta sin arrastrar tinta del fondo ni dejar fantasmas', () => {
+    for (const width of [96, 2048]) {
+      const base = drawDecorPixels(blankDecorBitmap(width), 'rectangle',
+        { x: 15, y: 5 }, { x: 48, y: 16 }, { filled: true, size: 1 });
+      const fragment = copyDecorRegion(base, { x: 11, y: 3, width: 41, height: 15 })!;
+      // At x=27 the pasted copy overlaps the original, including some solid ink.
+      const first = pasteDecorRegion(base, fragment, { x: 27, y: 11 });
+      expect(first.rows[20]![32]).toBe('1');
+      // A FLOATING move composites from the underlying original bitmap,
+      // NOT from 'first', where the copy has already contaminated its selection.
+      const moved = pasteDecorRegion(base, fragment, { x: 44, y: 11 });
+      expect(moved.rows[14]![30]).toBe('1'); // original retained
+      expect(moved.rows[20]![32]).toBe('0'); // no ghost at old copy position
+      expect(moved.rows[20]![80]).toBe('1'); // transferred only copied ink
+      expect(base.rows[20]![32]).toBe('0'); // base immutable
+      expect(first.rows[20]![32]).toBe('1'); // original composite immutable
+      expect(pasteDecorRegion(base, fragment, { x: 27, y: 11 }).rows).toEqual(first.rows);
+    }
+  });
+
   it('limita movimiento y pegado a lienzos antiguos y panorámicos y rechaza portapapeles inválidos', () => {
     for (const width of [96, 2048]) {
       const bitmap = blankDecorBitmap(width);
