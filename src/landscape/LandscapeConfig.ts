@@ -46,25 +46,66 @@ export interface DecorBitmap {
   height: number;
   rows: string[];
 }
+/** Compact on disk: 1-bit masks are serialized to a fixed-length bitset
+ * instead of 500 KB of literal zeroes/ones. The editor still works with v1 rows.
+ * The JSON v2 format is internal to VR3 preferences, not user-imported code.
+ */
+function bitmapWithPackedSerialization(width: number, rows: string[]): DecorBitmap {
+  const bitmap: DecorBitmap = { version: 1, width, height: decorBitmapHeight(width), rows };
+  Object.defineProperty(bitmap, 'toJSON', {
+    enumerable: false,
+    value: () => {
+      const bytes = new Uint8Array(Math.ceil(width * bitmap.height / 8));
+      let index = 0;
+      for (const row of bitmap.rows) {
+        for (let x = 0; x < width; x++, index++) {
+          if (row[x] === '1') bytes[index >> 3]! |= 1 << (7 - (index & 7));
+        }
+      }
+      let chars = '';
+      for (let i = 0; i < bytes.length; i += 8192)
+        chars += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      return { version: 2, width, height: bitmap.height, packed: btoa(chars) };
+    },
+  });
+  return bitmap;
+}
 export function blankDecorBitmap(width: number = DECOR_BITMAP_WIDTH): DecorBitmap {
   const safeWidth = isDecorBitmapWidth(width) ? width : DECOR_BITMAP_WIDTH;
-  const height = decorBitmapHeight(safeWidth);
-  return {
-    version: 1, width: safeWidth, height,
-    rows: Array.from({ length: height }, () => '0'.repeat(safeWidth)),
-  };
+  return bitmapWithPackedSerialization(safeWidth,
+    Array.from({ length: decorBitmapHeight(safeWidth) }, () => '0'.repeat(safeWidth)));
 }
 export function sanitizeDecorBitmap(value: unknown): DecorBitmap {
   const fallback = blankDecorBitmap();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
   const v = value as Record<string, unknown>;
-  if (v.version !== 1 || !isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)
-    || !Array.isArray(v.rows) || v.rows.length !== v.height) return fallback;
-  return {
-    version: 1, width: v.width, height: v.height,
-    rows: v.rows.map(row => typeof row === 'string' && row.length === v.width
-      && /^[01]+$/.test(row) ? row : '0'.repeat(v.width as number)),
-  };
+  if (!isDecorBitmapWidth(v.width) || v.height !== decorBitmapHeight(v.width)) return fallback;
+  const width = v.width;
+  if (v.version === 2) {
+    const length = Math.ceil(width * v.height / 8);
+    if (typeof v.packed !== 'string' || v.packed.length !== Math.ceil(length / 3) * 4
+      || !/^[A-Za-z0-9+/]*={0,2}$/.test(v.packed)) return fallback;
+    try {
+      const binary = atob(v.packed);
+      if (binary.length !== length) return fallback;
+      const rows: string[] = [];
+      for (let y = 0; y < v.height; y++) {
+        let line = '';
+        for (let x = 0; x < width; x++) {
+          const index = y * width + x;
+          line += (binary.charCodeAt(index >> 3) & (1 << (7 - (index & 7)))) ? '1' : '0';
+        }
+        rows.push(line);
+      }
+      return bitmapWithPackedSerialization(width, rows);
+    } catch {
+      return fallback;
+    }
+  }
+  if (v.version !== 1 || !Array.isArray(v.rows) || v.rows.length !== v.height) return fallback;
+  return bitmapWithPackedSerialization(width,
+    v.rows.map(row => typeof row === 'string' && row.length === width
+      && /^[01]+$/.test(row) ? row : '0'.repeat(width)));
 }
 
 /** Common configuration for both editable decorative depth planes. */
