@@ -253,3 +253,99 @@ test('círculo y triángulo rellenos forman figuras y no trazos libres', async (
     expect(bitmap.rows[cornerY]![cornerX]).toBe('0');
   }
 });
+
+
+test('selección rectangular panorámica es visible pero no altera los píxeles ni el historial', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar primer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const canvas = editor.locator('canvas');
+  const deselect = editor.getByRole('button', { name: 'Cancelar selección' });
+  const undo = editor.getByRole('button', { name: 'Deshacer' });
+  const status = editor.locator('.decor-paint-status');
+  await expect(editor.getByRole('combobox', { name: 'Resolución del lienzo' })).toHaveValue('2048');
+  await expect(deselect).toBeDisabled();
+
+  await tool.selectOption('rectangle');
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.10, bounds!.y + bounds!.height * 0.20);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.34, bounds!.y + bounds!.height * 0.75, { steps: 7 });
+  await page.mouse.up();
+  const before = await status.innerText();
+  const count = before.match(/(\d+) pintados/)?.[1];
+  expect(count).toBeDefined();
+  expect(Number(count)).toBeGreaterThan(0);
+  await expect(undo).toBeEnabled();
+  const baselineCanvas = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+
+  await tool.selectOption('select');
+  await page.mouse.move(bounds!.x + bounds!.width * 0.82, bounds!.y + bounds!.height * 0.82);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + bounds!.width * 0.56, bounds!.y + bounds!.height * 0.27, { steps: 7 });
+  await page.mouse.up();
+  await expect(status).toContainText('selección x=');
+  await expect(status).toContainText(`${count} pintados`);
+  await expect(deselect).toBeEnabled();
+  await expect(undo).toBeEnabled();
+  const overlayCanvas = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+  expect(overlayCanvas).not.toBe(baselineCanvas);
+
+  await deselect.click();
+  await expect(deselect).toBeDisabled();
+  await expect(status).not.toContainText('selección x=');
+  const resetCanvas = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+  expect(resetCanvas).toBe(baselineCanvas);
+  await editor.getByRole('button', { name: 'Aplicar dibujo' }).click();
+  const saved = await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().landscape.custom.foreground!.bitmap!);
+  expect(saved.width).toBe(2048);
+  expect(saved.rows.join('').match(/1/g)?.length).toBe(Number(count));
+});
+
+test('la selección conserva coordenadas con zoom y scroll y se cancela con Escape', async ({ page }) => {
+  await page.getByRole('button', { name: /PERSONALIZAR PAISAJE/ }).click();
+  const landscape = page.getByRole('dialog', { name: 'Personalizar paisaje' });
+  await landscape.getByRole('button', { name: 'Dibujar tercer plano' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editor de dibujo de plano' });
+  const resolution = editor.getByRole('combobox', { name: 'Resolución del lienzo' });
+  const zoom = editor.getByRole('combobox', { name: 'Zoom del lienzo' });
+  const tool = editor.getByRole('combobox', { name: 'Herramienta de dibujo' });
+  const status = editor.locator('.decor-paint-status');
+  const viewport = editor.getByRole('region', { name: 'Área desplazable del dibujo' });
+  await resolution.selectOption('96');
+  await tool.selectOption('select');
+  await zoom.selectOption('4');
+
+  const scroll = await viewport.evaluate(node => {
+    node.scrollLeft = Math.round(node.scrollWidth * 0.43);
+    node.scrollTop = Math.round(node.scrollHeight * 0.28);
+    return { left: node.scrollLeft, top: node.scrollTop };
+  });
+  expect(scroll.left).toBeGreaterThan(0);
+  expect(scroll.top).toBeGreaterThan(0);
+  const box = await viewport.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width * 0.25, box!.y + box!.height * 0.22);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width * 0.72, box!.y + box!.height * 0.64, { steps: 8 });
+  await page.mouse.up();
+  const selectedStatus = await status.innerText();
+  const coords = selectedStatus.match(/selección x=(\d+), y=(\d+) · (\d+) × (\d+) px/);
+  expect(coords).not.toBeNull();
+  expect(Number(coords![1])).toBeGreaterThan(0);
+  expect(Number(coords![2])).toBeGreaterThan(0);
+  expect(Number(coords![1]) + Number(coords![3])).toBeLessThanOrEqual(96);
+  expect(Number(coords![2]) + Number(coords![4])).toBeLessThanOrEqual(32);
+  await zoom.selectOption('1');
+  await expect(status).toContainText(coords![0]); // zoom must not rewrite pixel coordinates
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeVisible(); // first Escape deselects; does not close the editor
+  await expect(status).not.toContainText('selección x=');
+  await expect(editor.getByRole('button', { name: 'Deshacer' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(editor).not.toBeVisible();
+});
