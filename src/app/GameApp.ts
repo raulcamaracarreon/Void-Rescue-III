@@ -1,6 +1,7 @@
 import { FixedClock } from '../core/Clock';
 import { radarSegments } from '../core/WorldWrap';
 import { CONFIG } from '../game/config';
+import type { VehicleId } from '../game/VehicleProfile';
 import { IDLE_INPUT, SCENARIOS, Simulation } from '../game/Simulation';
 import type { ScenarioName } from '../game/Simulation';
 import { InputManager } from '../input/InputManager';
@@ -288,11 +289,13 @@ export class GameApp {
         camera: { x: this.graphics.rig.x, viewWidth: this.graphics.viewWidth,
           radarSegments: radarSegments(this.graphics.rig.x, this.graphics.viewWidth, CONFIG.worldWidth) },
         audio: this.audio.getState() }),
-      loadScenario: (name: string, seed = this.simulation.state.seed) => {
+      loadScenario: (name: string, seed = this.simulation.state.seed, vehicle: VehicleId = 'ship') => {
         if (!(SCENARIOS as readonly string[]).includes(name)) throw new Error(`Escenario no implementado: ${name}. Disponibles: ${SCENARIOS.join(', ')}`);
         if (!Number.isFinite(seed)) throw new Error('La semilla debe ser finita.');
+        if (vehicle !== 'ship' && vehicle !== 'helicopter') throw new Error('Vehículo no implementado.');
+        // DEV-only diagnostic, never a production choice or ranked run.
         this.run = null;
-        this.simulation = new Simulation(seed, name as ScenarioName, this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol);
+        this.simulation = new Simulation(seed, name as ScenarioName, this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol, vehicle);
         this.audio.resetEvents(); this.lastTeleport = 0;
         this.graphics.reset(this.simulation.state, false);
         this.setMode('playing');
