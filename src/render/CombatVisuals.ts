@@ -118,7 +118,10 @@ export class CombatVisuals {
       this.tractorBeam.visible = visible(extracting.x);
       this.tractorBeam.position.set((colonistX + playerX) / 2, (extracting.y + state.player.y) / 2, 10);
       this.tractorBeam.rotation.z = Math.atan2(dx, dy);
-      this.tractorBeam.scale.set(2.8 + Math.sin(state.time * 20) * 0.3, Math.max(0.1, Math.hypot(dx, dy)), 1);
+      // Helicopter: narrow winch cable. Classic ship: original broad beam.
+      this.tractorBeam.scale.set(state.vehicleId === 'helicopter' ? 0.32
+        : 2.8 + Math.sin(state.time * 20) * 0.3, Math.max(0.1, Math.hypot(dx, dy)), 1);
+      this.tractorMaterial.color.setHex(state.vehicleId === 'helicopter' ? 0xd4d9b8 : 0x7dffe0);
     } else this.tractorBeam.visible = false;
     this.portal.visible = state.portal.ready && visible(state.portal.x);
     this.portal.position.set(x(state.portal.x), state.portal.y, -1);
