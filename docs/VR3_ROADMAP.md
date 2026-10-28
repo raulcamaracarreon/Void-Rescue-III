@@ -139,7 +139,20 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 
 **Aceptación del primer incremento:** crear dibujos distintos para primero y tercero, cancelar sin cambios, deshacer y rehacer, aplicar, guardar en la biblioteca y recuperar después de recargar. La fase 3 completa se cerrará solamente tras terminar los puntos restantes.
 
-### 4. Vehículos y perfiles de movimiento (pendiente)
+### 4. Vehículos y perfiles de movimiento (iniciada en rama `feat/phase4-vehicle-profiles`)
+
+**Primer incremento técnico — contratos de vuelo (27/10/2026):**
+- [x] Inspección de `Simulation.ts`, `config.ts`, `models/Ship.ts`, `Renderer.ts`, `GameApp.ts` e integración de combate/rescate. El núcleo ya separa simulación, render y entradas.
+- [x] `src/game/VehicleProfile.ts` define `VehicleId`, `VehicleProfile`, navegación del perfil actual, parámetros de vuelo (aceleración, resistencia, velocidad horizontal/vertical y respuesta vertical) y parámetros de proyectil (velocidad y posición de salida).
+- [x] **Nave heredada:** `SHIP_PROFILE` utiliza exactamente las constantes de `CONFIG`, mantiene las fórmulas, y sigue siendo la selección predeterminada en todas las instancias de `GameApp` y pruebas anteriores.
+- [x] **Helicóptero experimental sin selección en interfaz:** `HELICOPTER_PROFILE` propone dinámica horizontal más lenta, mayor resistencia y respuesta vertical más progresiva. Únicamente se puede usar al instanciar explícitamente `Simulation` con el séptimo argumento; `Renderer.ts` todavía dibuja la nave. No es un helicóptero jugable final ni un vehículo habilitado para usuarios.
+- [x] `Simulation.ts` consume el perfil en las ecuaciones de movimiento y lanzamiento de proyectiles, sin tocar sistemas de puntuación, enemigos, rescate, oleadas, controles ni el modelo 3D.
+- [x] Añadidas cuatro pruebas unitarias específicas: paridad del perfil nave con las constantes heredadas, primer paso matemático idéntico, dinámica alternativa y determinismo del prototipo.
+- [ ] **Validación local pendiente:** `npm run build`, `npx vitest run tests/unit/core.test.ts tests/unit/vehicle-profiles.test.ts` y regresión mínima de vuelo. No se ejecutaron pruebas locales desde GitHub; no dar el incremento por validado.
+- [ ] **Próxima entrega:** modelo visual 3D del helicóptero, contrato de render compartido, parámetros de interacción/rescate y entrada de selección antes de partida. No activar el helicóptero para jugadores ni alterar récords/comparabilidad hasta verificar paridad.
+- [ ] **Decisión de producto pendiente de confirmar:** variantes elegibles dentro del mismo juego (propuesta preferida para reutilizar reglas) frente a modos/episodios separados. El incremento técnico es compatible con ambas y no impone la decisión.
+
+### 4. Vehículos y perfiles de movimiento
 
 - Un contrato común de vehículo (modelo visual, movimiento, armas, capacidad, sonido, acciones).
 - Primer perfil alternativo: helicóptero de rescate con parámetros propios de ascenso, descenso, inercia y recogida.
