@@ -126,6 +126,10 @@ export class FlightRenderer {
       model.mainRotor.rotation.y = 0;
       model.tailRotor.rotation.z = 0;
     }
+    // Avoid a transition frame containing BOTH models before the next draw.
+    this.ship.group.visible = state.vehicleId === 'ship' && (state.player.alive || title);
+    if (this.helicopter) this.helicopter.group.visible =
+      state.vehicleId === 'helicopter' && (state.player.alive || title);
     this.facingAngle = state.player.facing === 1 ? 0 : Math.PI;
     this.frameTimes = [];
     if (state.seed !== this.seed) {
