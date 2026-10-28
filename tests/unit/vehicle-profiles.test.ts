@@ -38,8 +38,12 @@ describe('fase 4 — perfiles de vehículo', () => {
     const expectedVy = CONFIG.verticalSpeed * (1 - Math.exp(-CONFIG.verticalResponse * dt));
     expect(sim.state.player.vx).toBe(expectedVx);
     expect(sim.state.player.vy).toBe(expectedVy);
-    expect(sim.state.shots[0]?.x).toBe(CONFIG.startX + 5);
-    expect(sim.state.shots[0]?.vx).toBe(CONFIG.shotSpeed + expectedVx);
+    // The ship advances before firing, and the flight-basic scenario advances
+    // the newly spawned projectile once again during the SAME simulation tick.
+    const expectedShotVx = CONFIG.shotSpeed + expectedVx;
+    const spawnX = CONFIG.startX + expectedVx * dt + SHIP_PROFILE.weapon.muzzleOffset;
+    expect(sim.state.shots[0]?.vx).toBe(expectedShotVx);
+    expect(sim.state.shots[0]?.x).toBeCloseTo(spawnX + expectedShotVx * dt, 10);
   });
 
   it('define un helicóptero experimental de movimiento distinto, sin cambiar reglas de rescate', () => {
