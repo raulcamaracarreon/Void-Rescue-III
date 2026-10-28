@@ -110,3 +110,8 @@ Tras una primera inspección visual, el usuario pidió un helicóptero **más pr
 ### Fase 4 — audio procedural propio del helicóptero (27/10/2026)
 
 Tras la aceptación visual de apariencia, velocidad y animación (inversión puntual del signo vertical), se detectó que el helicóptero compartía los osciladores de la nave. La rama incorpora ahora `src/audio/HelicopterSound.ts`, con pulsos de rotor y rumor de turbina, conmutación por `state.vehicleId`, pausa/silencio/volumen compartidos y conservación literal del audio original de nave. **Build, 8 pruebas unitarias y 10 E2E de audio/vehículos están pendientes de ejecución local; también falta la validación auditiva**. El modo helicóptero sigue accesible únicamente mediante diagnóstico DEV; `main` no se modifica.
+
+
+### Fase 4 — reducción proporcional del helicóptero (27/10/2026)
+
+El usuario aprobó el sonido propio de rotor/turbina. Para conservar la proporción y la dificultad perceptiva del juego clásico, se redujo la escala visual del helicóptero de `1.18` a `0.56`, conservando su modelo angular, animaciones y sonido. Se ajustó la separación del suelo a `terrain + 2.0` para que las ruedas no floten. No se alteraron física horizontal, hitboxes, armas, dificultad ni la nave original. **Pendiente:** compilación, 11 pruebas unitarias y 8 E2E del vuelo visual, más revisión manual de proporción.
