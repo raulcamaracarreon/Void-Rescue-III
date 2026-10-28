@@ -56,20 +56,29 @@ export class Interface {
       <section class="title-screen" aria-labelledby="game-title">
         <div class="topline"><span class="brandmark">V<span>R</span></span><span>COLONIAL RESPONSE DIVISION</span><span class="build-tag">VOID RESCUE III · PROTOTIPO</span></div>
         <div class="title-copy">
-          <p class="eyebrow"><i></i> SECTOR 07 / PERÍMETRO EXTERIOR</p>
-          <h1 id="game-title">VOID<br><span>RESCUE</span><b>↗</b></h1>
-          <p class="tagline">La colonia está lejos.<br>Tu nave es su primera respuesta.</p>
-          <p class="title-description">Rescata colonos y sobrevive a oleadas cada vez más difíciles.<br>Sin última oleada. ¿Hasta dónde llegará tu récord?</p>
-          <div class="mission-settings"><label>ENEMIGOS <select aria-label="Sistema de enemigos" class="spawn-mode-select"></select></label><label>MISIÓN <select aria-label="Modo de juego" class="mission-mode-select"></select></label><label>DIFICULTAD <select aria-label="Dificultad" class="difficulty-select"></select></label><label>RESCATE <select aria-label="Protocolo de rescate" class="rescue-protocol-select"></select></label></div>
-          <p class="protocol-help" aria-live="polite"></p>
-          <div class="vehicle-setting"><label>VEHÍCULO <select aria-label="Vehículo" class="vehicle-select"></select></label><span class="vehicle-help" aria-live="polite"></span></div>
-          <label class="title-engine-pitch engine-pitch-control">TONO MÁXIMO DEL MOTOR <input type="range" class="engine-pitch-slider" min="${ENGINE_PITCH_MIN}" max="${ENGINE_PITCH_MAX}" step="1" aria-label="Tono máximo del motor"><output class="engine-pitch-value">300 Hz</output></label>
-          <div class="pilot-setting"><span>PILOTO</span>${[0, 1, 2].map(i => `<select class="pilot-initial" aria-label="Inicial ${i + 1}">${[...INITIALS].map(letter => `<option${pilot[i] === letter ? ' selected' : ''}>${letter}</option>`).join('')}</select>`).join('')}<button class="text-button" data-action="records">VER RÉCORDS ↗</button></div>
-          <button class="primary" data-action="start">INICIAR VUELO <span>↗</span></button>
-          <button class="text-button landscape-open" data-action="landscape">PERSONALIZAR PAISAJE ↗</button>
-          <button class="controller-open text-button" data-action="controller">CONFIGURAR MANDO USB ↗</button><p class="controller-status"></p>
-          <div class="title-controls"><span><kbd>W A S D</kbd> Pilotar</span><span><kbd>ESPACIO</kbd> Disparar</span><span><kbd>SHIFT</kbd> Bomba</span></div>
-          <p class="gamepad-note">Joypad: sur A/× disparar y confirmar · oeste X/□ bomba · norte Y/△ acción/portal<br>Stick/cruceta navegar · este B/○ volver · Start pausa</p>
+          <div class="title-hero">
+            <div class="title-intro">
+              <p class="eyebrow"><i></i> SECTOR 07 / PERÍMETRO EXTERIOR</p>
+              <h1 id="game-title">VOID<br><span>RESCUE</span><b>↗</b></h1>
+              <p class="tagline">La colonia está lejos.<br>Tu nave es su primera respuesta.</p>
+              <p class="title-description">Rescata colonos y sobrevive a oleadas cada vez más difíciles.<br>Sin última oleada. ¿Hasta dónde llegará tu récord?</p>
+            </div>
+            <div class="title-hints">
+              <div class="title-controls"><span><kbd>W A S D</kbd> Pilotar</span><span><kbd>ESPACIO</kbd> Disparar</span><span><kbd>SHIFT</kbd> Bomba</span></div>
+              <p class="gamepad-note">Joypad: sur A/× disparar y confirmar · oeste X/□ bomba · norte Y/△ acción/portal<br>Stick/cruceta navegar · este B/○ volver · Start pausa</p>
+            </div>
+          </div>
+          <div class="title-config" role="group" aria-label="Configuración de vuelo">
+            <p class="config-heading">CONFIGURACIÓN DE VUELO</p>
+            <div class="mission-settings"><label>ENEMIGOS <select aria-label="Sistema de enemigos" class="spawn-mode-select"></select></label><label>MISIÓN <select aria-label="Modo de juego" class="mission-mode-select"></select></label><label>DIFICULTAD <select aria-label="Dificultad" class="difficulty-select"></select></label><label>RESCATE <select aria-label="Protocolo de rescate" class="rescue-protocol-select"></select></label></div>
+            <p class="protocol-help" aria-live="polite"></p>
+            <div class="vehicle-setting"><label>VEHÍCULO <select aria-label="Vehículo" class="vehicle-select"></select></label><span class="vehicle-help" aria-live="polite"></span></div>
+            <label class="title-engine-pitch engine-pitch-control">TONO MÁXIMO DEL MOTOR <input type="range" class="engine-pitch-slider" min="${ENGINE_PITCH_MIN}" max="${ENGINE_PITCH_MAX}" step="1" aria-label="Tono máximo del motor"><output class="engine-pitch-value">300 Hz</output></label>
+            <div class="pilot-setting"><span>PILOTO</span>${[0, 1, 2].map(i => `<select class="pilot-initial" aria-label="Inicial ${i + 1}">${[...INITIALS].map(letter => `<option${pilot[i] === letter ? ' selected' : ''}>${letter}</option>`).join('')}</select>`).join('')}<button class="text-button" data-action="records">VER RÉCORDS ↗</button></div>
+            <button class="primary" data-action="start">INICIAR VUELO <span>↗</span></button>
+            <div class="title-quick-actions"><button class="text-button landscape-open" data-action="landscape">PERSONALIZAR PAISAJE ↗</button><button class="controller-open text-button" data-action="controller">CONFIGURAR MANDO USB ↗</button></div>
+            <p class="controller-status"></p>
+          </div>
         </div>
         <div class="ship-caption"><span class="caption-line"></span><p>VR—01 <b>RESPONDER</b></p><small>NAVE DE RESPUESTA RÁPIDA</small></div>
         <div class="title-footer"><span><i></i> SISTEMAS DE VUELO LISTOS</span><span>SIMULACIÓN LOCAL / SIN CONEXIÓN EXTERNA</span><button data-action="fullscreen" class="text-button">PANTALLA COMPLETA ↗</button></div>
