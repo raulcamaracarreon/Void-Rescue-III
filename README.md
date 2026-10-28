@@ -96,3 +96,8 @@ No se sustituirán el núcleo de simulación, la física ni las reglas probadas 
 **Automatizaciones:** los workflows de validación y Pages quedan manuales durante la etapa de prototipo; el workflow de releases exclusivo de VR2 no se incluye. No crear tags de versión VR2 desde esta rama.
 
 **Repositorio independiente creado:** [Void-Rescue-III](https://github.com/raulcamaracarreon/Void-Rescue-III). La rama `feat/dual-decor-layers` parte de `feat/foreground-layers`; ambas se mantienen separadas de `main` hasta validación. El remoto `vr2-base` es sólo una referencia histórica.
+
+
+### Revisión del helicóptero experimental — 27/10/2026
+
+Tras una primera inspección visual, el usuario pidió un helicóptero **más próximo en silueta a un Black Hawk**, mayor velocidad y descenso hasta ras de suelo. Los cambios ya están en la rama de fase 4, pero **sin pruebas locales ejecutadas** después del rediseño: fuselaje angular con cabina, motores dobles, ruedas y mayor tamaño aparente; velocidad límite 90, aceleración 175 y altura mínima `terrain.height(x)+3.8` incluso en reconocimiento. Se mantiene `ship` como predeterminado con parámetros originales y el helicóptero solo en diagnóstico DEV. Próximo paso: build, 10 unitarias, 6 E2E focalizadas y revisión visual, sin fusionar ni publicar.
