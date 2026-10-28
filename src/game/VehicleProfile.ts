@@ -15,6 +15,8 @@ export interface VehicleProfile {
     readonly maxSpeed: number;
     readonly verticalSpeed: number;
     readonly verticalResponse: number;
+    /** Clearance from the player's center to the terrain in ground-hugging flight. */
+    readonly groundClearance: number;
   };
   readonly weapon: {
     readonly projectileSpeed: number;
@@ -34,23 +36,26 @@ export const SHIP_PROFILE: VehicleProfile = {
     maxSpeed: CONFIG.maxSpeed,
     verticalSpeed: CONFIG.verticalSpeed,
     verticalResponse: CONFIG.verticalResponse,
+    groundClearance: 0, // legacy flight keeps its historical altitude floor
   },
   weapon: { projectileSpeed: CONFIG.shotSpeed, muzzleOffset: 5 },
 };
 
-/** Flight dynamics candidate for the first alternate vehicle.
- * Experimental / simulation-only: do not offer in UI until its 3D model,
- * input, camera framing, rescue and weapon behavior are integrated and tested.
+/** More responsive arcade utility helicopter. At 175/1.7 horizontal thrust
+ * reaches a 90-unit/s limit; it can descend to landing-gear clearance above
+ * the terrain in both diagnostic and combat scenarios. Experimental only:
+ * rescue capacity, weapons, audio and ranked gameplay are not integrated.
  */
 export const HELICOPTER_PROFILE: VehicleProfile = {
   id: 'helicopter',
   name: 'Helicóptero de rescate (experimental)',
   flight: {
-    acceleration: 64,
-    drag: 2.4,
-    maxSpeed: 48,
-    verticalSpeed: 28,
-    verticalResponse: 5.5,
+    acceleration: 175,
+    drag: 1.7,
+    maxSpeed: 90,
+    verticalSpeed: 42,
+    verticalResponse: 9,
+    groundClearance: 3.8,
   },
   weapon: { projectileSpeed: 150, muzzleOffset: 5 },
 };
