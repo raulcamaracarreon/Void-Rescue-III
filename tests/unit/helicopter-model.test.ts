@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { animateHelicopter, createHelicopter } from '../../src/render/models/Helicopter';
+import { Box3, Vector3 } from 'three/webgpu';
+import { HELICOPTER_PROFILE, SHIP_PROFILE } from '../../src/game/VehicleProfile';
+import { createShip } from '../../src/render/models/Ship';
+import { animateHelicopter, createHelicopter, HELICOPTER_GAME_SCALE } from '../../src/render/models/Helicopter';
 
 describe('fase 4 — modelo visual del helicóptero', () => {
   it('construye un helicóptero utilitario angular con cabina, motores, ruedas y rotores', () => {
@@ -29,6 +32,34 @@ describe('fase 4 — modelo visual del helicóptero', () => {
     expect(cabin).toBeDefined();
     expect(model.tailRotor.position.x).toBeLessThan(-10);
     expect(model.mainRotor.position.y).toBeGreaterThan(3);
+  });
+
+  it('mantiene una huella visible comparable a la nave clásica y las ruedas sobre el suelo', () => {
+    const ship = createShip();
+    const helicopter = createHelicopter();
+    helicopter.group.scale.setScalar(HELICOPTER_GAME_SCALE);
+    ship.group.updateMatrixWorld(true);
+    helicopter.group.updateMatrixWorld(true);
+
+    const shipBounds = new Box3().setFromObject(ship.group);
+    const helicopterBounds = new Box3().setFromObject(helicopter.group);
+    const shipSize = shipBounds.getSize(new Vector3());
+    const helicopterSize = helicopterBounds.getSize(new Vector3());
+
+    // Same order of size as the classic ship (including its exhaust meshes),
+    // rather than the 2x-sized model that was visible in the first prototype.
+    expect(helicopterSize.x).toBeGreaterThan(shipSize.x * 0.8);
+    expect(helicopterSize.x).toBeLessThan(shipSize.x * 1.15);
+    expect(helicopterSize.y).toBeGreaterThan(shipSize.y * 0.75);
+    expect(helicopterSize.y).toBeLessThan(shipSize.y * 1.15);
+
+    // The lowest wheels touch near the floor without penetrating the terrain
+    // in neutral hover (player center is at terrain + groundClearance).
+    const wheelGap = HELICOPTER_PROFILE.flight.groundClearance + helicopterBounds.min.y;
+    expect(wheelGap).toBeGreaterThan(0);
+    expect(wheelGap).toBeLessThan(0.75);
+    expect(SHIP_PROFILE.flight.groundClearance).toBe(0);
+    // The shared hitbox/shot rules are unchanged by these visual dimensions.
   });
 
   it('anima rotores independientemente sin intervenir en la simulación', () => {
