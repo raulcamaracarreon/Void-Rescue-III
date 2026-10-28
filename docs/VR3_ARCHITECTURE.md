@@ -100,3 +100,14 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 - Para evitar que una copia solapada arrastre píxeles antiguos, el editor conserva temporalmente una **copia flotante**: bitmap base anterior, máscara del fragmento y posición. Al moverla, recompone desde esa base. Se consolida al deseleccionar, cambiar herramienta o aplicar; no se persiste como una capa nueva ni cambia la serialización.
 - **Validación:** aceptación visual; `npm run build` aprobado; **16/16** Vitest y **8/8** E2E focalizadas tras el último parche, en ambos backends. Las **20/20** E2E generales pertenecen a la iteración previa a la corrección.
 - Se cierra el incremento funcional de Paint/selección. Permanecen en backlog escalado/transformación avanzada, exportación/importación JSON versionada y QA de accesibilidad, oclusión y rendimiento. Próximo hito: **fase 4, perfiles jugables de vehículos**, sin reescribir física, rescate o puntuación.
+
+
+## Fase 4 — contrato de perfiles de movimiento (primer incremento, 27/10/2026)
+
+**Inventario de dependencias reales:** `src/game/Simulation.ts` implementa dinámica horizontal/vertical y disparo usando constantes de `src/game/config.ts`. `GameApp.ts` crea las simulaciones al entrar al menú, iniciar, reiniciar y cargar un escenario de diagnóstico. `src/render/Renderer.ts` usa `createShip()` de `models/Ship.ts` como representación visual independiente. `src/game/combat` mantiene combate, daño, rescate, puntuación y oleadas; `InputManager` entrega los mismos ejes y acciones para cualquier perfil.
+
+**Contrato introducido:** `src/game/VehicleProfile.ts` define identificadores `ship` y `helicopter`, con parámetros `flight` (`acceleration`, `drag`, `maxSpeed`, `verticalSpeed`, `verticalResponse`) y `weapon` (`projectileSpeed`, `muzzleOffset`). `Simulation` recibe opcionalmente `selectedVehicle` en la posición final de su constructor, predeterminada a `ship`. `FlightState.vehicleId` registra la identidad. La nave conserva literalmente los valores y cálculos de la versión anterior para no alterar jugabilidad ni clasificación.
+
+El helicóptero **solo es una propuesta de dinámica simulable en pruebas unitarias**. No existe todavía modelo 3D, HUD de selección, sonidos específicos, mecánica diferenciada de rescate ni compatibilidad jugable demostrada; el jugador sigue viendo y controlando la nave predeterminada. No introducirlo como opción visible antes de integrar y probar la representación coherente. Los sistemas de rescate/oleadas y colisiones todavía no diferencian vehículos; la fase 4 debe abstraerlos de manera incremental y conservar la nave como referencia. La decisión variantes dentro de un juego frente a episodios independientes permanece abierta.
+
+**Pruebas incorporadas pero aún no ejecutadas localmente:** `tests/unit/vehicle-profiles.test.ts` y regresión `core.test.ts`. Compilación y E2E de vuelo pendientes.
