@@ -59,7 +59,7 @@ export function updateColonists(ctx: CombatContext, dt: number, beamHeld = false
         deltaX(p.previousX, p.x), p.y - p.previousY - (c.y - oldY), { x: c.x, y: oldY }, COMBAT.rescueRadius) !== null;
       if (hit) {
         c.status = 'carried'; c.vy = 0; c.crashSafeLanding = false;
-        c.onboard = s.missionMode === 'rescue';
+        c.onboard = s.missionMode === 'rescue' || s.vehicleId === 'helicopter';
         if (!c.rescued) { s.score += COMBAT.catchPoints; c.rescued = true; }
         ctx.emit('rescue', c.x, c.y);
       } else if (c.y <= ctx.terrain.height(c.x) + 1.5) {
@@ -96,8 +96,8 @@ export function updateColonists(ctx: CombatContext, dt: number, beamHeld = false
     }
     if (c.status === 'carried') {
       if (!p.alive) { c.status = 'falling'; c.vy = 0; continue; }
-      if (s.missionMode === 'rescue') {
-        // All passengers are stowed inside the ship and displayed as a counter.
+      if (s.missionMode === 'rescue' || s.vehicleId === 'helicopter') {
+        // Rescue-mode ship passengers and all helicopter passengers board inside.
         c.onboard = true; c.x = p.x; c.y = p.y;
       } else {
         c.onboard = false;
