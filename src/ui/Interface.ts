@@ -18,13 +18,15 @@ import { defenseGoal } from '../game/combat/DynamicDirector';
 import { adaptivePalette } from '../landscape/AdaptivePalette';
 import type { LandscapeStyle } from '../landscape/LandscapeConfig';
 import { ENGINE_PITCH_MIN, ENGINE_PITCH_MAX } from '../audio/AudioEngine';
+import { VEHICLE_PROFILES } from '../game/VehicleProfile';
+import type { VehicleId } from '../game/VehicleProfile';
 
 export type AppMode = 'title' | 'playing' | 'paused' | 'result';
 export interface Preferences { muted: boolean; volume: number; reducedMotion: boolean; difficulty: Difficulty; missionMode: MissionMode; spawnMode: SpawnMode; rescueProtocol: RescueProtocol; enginePitchHz: number }
 export interface UiActions {
   start(): void; resume(): void; restart(): void; menu(): void; pause(): void;
   mute(): void; fullscreen(): void; controller(): void; landscape(): void; preferences(value: Preferences): void;
-  result(): void; records(): void; pilot(value: string): void;
+  result(): void; records(): void; pilot(value: string): void; vehicle(value: VehicleId): void;
 }
 
 export class Interface {
@@ -49,7 +51,7 @@ export class Interface {
   private debugVisible = false;
   private lastMode: AppMode = 'title';
 
-  constructor(private readonly root: HTMLElement, private readonly actions: UiActions, preferences: Preferences, pilot: string) {
+  constructor(private readonly root: HTMLElement, private readonly actions: UiActions, preferences: Preferences, pilot: string, selectedVehicle: VehicleId = 'ship') {
     root.innerHTML = `
       <section class="title-screen" aria-labelledby="game-title">
         <div class="topline"><span class="brandmark">V<span>R</span></span><span>COLONIAL RESPONSE DIVISION</span><span class="build-tag">VOID RESCUE III · PROTOTIPO</span></div>
@@ -60,6 +62,7 @@ export class Interface {
           <p class="title-description">Rescata colonos y sobrevive a oleadas cada vez más difíciles.<br>Sin última oleada. ¿Hasta dónde llegará tu récord?</p>
           <div class="mission-settings"><label>ENEMIGOS <select aria-label="Sistema de enemigos" class="spawn-mode-select"></select></label><label>MISIÓN <select aria-label="Modo de juego" class="mission-mode-select"></select></label><label>DIFICULTAD <select aria-label="Dificultad" class="difficulty-select"></select></label><label>RESCATE <select aria-label="Protocolo de rescate" class="rescue-protocol-select"></select></label></div>
           <p class="protocol-help" aria-live="polite"></p>
+          <div class="vehicle-setting"><label>VEHÍCULO <select aria-label="Vehículo" class="vehicle-select"></select></label><span class="vehicle-help" aria-live="polite"></span></div>
           <label class="title-engine-pitch engine-pitch-control">TONO MÁXIMO DEL MOTOR <input type="range" class="engine-pitch-slider" min="${ENGINE_PITCH_MIN}" max="${ENGINE_PITCH_MAX}" step="1" aria-label="Tono máximo del motor"><output class="engine-pitch-value">300 Hz</output></label>
           <div class="pilot-setting"><span>PILOTO</span>${[0, 1, 2].map(i => `<select class="pilot-initial" aria-label="Inicial ${i + 1}">${[...INITIALS].map(letter => `<option${pilot[i] === letter ? ' selected' : ''}>${letter}</option>`).join('')}</select>`).join('')}<button class="text-button" data-action="records">VER RÉCORDS ↗</button></div>
           <button class="primary" data-action="start">INICIAR VUELO <span>↗</span></button>
@@ -132,6 +135,21 @@ export class Interface {
       pitchOutputs.forEach(output => { output.value = `${pitchHz} Hz`; });
     };
     showPitch(preferences.enginePitchHz);
+    const vehicleSelect = get<HTMLSelectElement>('.vehicle-select');
+    vehicleSelect.innerHTML = Object.entries(VEHICLE_PROFILES).map(([id, profile]) =>
+      `<option value="${id}">${profile.name}</option>`).join('');
+    vehicleSelect.value = selectedVehicle;
+    const vehicleHelp = get<HTMLElement>('.vehicle-help');
+    const updateVehicleHelp = () => {
+      vehicleHelp.textContent = vehicleSelect.value === 'helicopter'
+        ? 'Helicóptero: 2 pasajeros · descenso próximo al terreno · mantén E/Y para recoger a baja velocidad'
+        : 'Nave clásica: extracción habitual · capacidad sin límite · mismo control de vuelo';
+    };
+    updateVehicleHelp();
+    vehicleSelect.addEventListener('change', () => {
+      updateVehicleHelp();
+      actions.vehicle(vehicleSelect.value as VehicleId);
+    });
     const spawnSelect = get<HTMLSelectElement>('.spawn-mode-select');
     spawnSelect.innerHTML = Object.entries(SPAWN_MODES).map(([id, item]) => `<option value="${id}">${item.label}</option>`).join('');
     spawnSelect.value = preferences.spawnMode;
@@ -259,7 +277,7 @@ export class Interface {
     this.coordinate.textContent = String(Math.floor(state.player.x)).padStart(4, '0');
     this.timer.textContent = `${String(Math.floor(state.time / 60)).padStart(2, '0')}:${String(Math.floor(state.time % 60)).padStart(2, '0')}`;
     this.distance.textContent = `${String(Math.floor(state.distance)).padStart(4, '0')} u`;
-    this.throttle.style.width = `${Math.abs(state.player.vx) / 70 * 100}%`;
+    this.throttle.style.width = `${Math.min(100, Math.abs(state.player.vx) / VEHICLE_PROFILES[state.vehicleId].flight.maxSpeed * 100)}%`;
     this.device.textContent = gamepad ? 'MANDO CONECTADO' : 'TECLADO';
     const labels = gamepad ? padLabels ?? PAD_CONTROL_LABELS : CONTROL_LABELS;
     const footer = this.root.querySelector('.flight-footer>div')!;
@@ -274,7 +292,7 @@ export class Interface {
         ? `Stick / cruceta: elegir · ${padLabels[1]![0]}: confirmar · ${padLabels[5]![0]}: volver`
         : 'Stick / cruceta: elegir · sur A/×: confirmar · este B/○: volver';
     }
-    this.root.querySelector('.active-protocol')!.textContent = `Protocolo de rescate activo: ${RESCUE_PROTOCOLS[state.rescueProtocol].label} (se elige antes de iniciar el vuelo).`;
+    this.root.querySelector('.active-protocol')!.textContent = `Vehículo: ${VEHICLE_PROFILES[state.vehicleId].name} · Protocolo: ${RESCUE_PROTOCOLS[state.rescueProtocol].label} (definidos antes del vuelo).`;
     this.combatHud(state, metrics, gamepad);
     if (gamepad && padLabels && state.portal.ready && this.root.querySelector('#combat-message')!.textContent?.startsWith('PORTAL LISTO')) {
       this.root.querySelector('#combat-message')!.textContent = `PORTAL LISTO · ${padLabels[3]![0]} cerca del anillo para saltar`;
@@ -311,6 +329,8 @@ export class Interface {
     const carrying = state.colonists.filter(c => c.status === 'carried').length;
     const passengers = state.colonists.filter(c => c.status === 'carried' && c.onboard).length;
     const extracting = state.colonists.some(c => c.status === 'extracting');
+    const helicopter = state.vehicleId === 'helicopter';
+    const capacity = VEHICLE_PROFILES[state.vehicleId].rescue.capacity;
     const lifeSlots = Math.max(state.lives, DIFFICULTIES[state.difficulty].lifeCap);
     const dynamic = state.spawnMode === 'dynamic';
     const goal = defenseGoal(state.wave, state.difficulty, state.colonists.length);
@@ -319,23 +339,27 @@ export class Interface {
       ? `<span>RESISTIR <b>${remaining}s</b></span><span>MÍNIMO <b>${goal.minimum}</b></span>`
       : `<span>POR RESOLVER <b>${state.colonists.filter(c => c.status !== 'safe' && c.status !== 'lost').length}</b></span>`
       : '';
-    get('#combat-stats').innerHTML = `<span>PUNTOS <b>${String(state.score).padStart(6, '0')}</b></span><span>NAVES <b>${'◆'.repeat(state.lives)}${'◇'.repeat(lifeSlots - state.lives)}</b></span><span>BOMBAS <b>${state.bombs}</b></span><span>COLONOS <b>${live}/${state.colonists.length}</b></span><span>A SALVO <b>${state.delivered}</b></span>${state.missionMode === 'rescue' ? `<span>A BORDO <b>${passengers}/${state.colonists.length}</b></span>` : ''}<span>AMENAZAS <b>${state.enemies.length + (dynamic ? 0 : state.schedule.length - state.spawnIndex)}</b></span>${objective}`;
+    get('#combat-stats').innerHTML = `<span>PUNTOS <b>${String(state.score).padStart(6, '0')}</b></span><span>NAVES <b>${'◆'.repeat(state.lives)}${'◇'.repeat(lifeSlots - state.lives)}</b></span><span>BOMBAS <b>${state.bombs}</b></span><span>COLONOS <b>${live}/${state.colonists.length}</b></span><span>A SALVO <b>${state.delivered}</b></span>${state.missionMode === 'rescue' ? `<span>A BORDO <b>${passengers}/${capacity ?? state.colonists.length}</b></span>` : ''}<span>AMENAZAS <b>${state.enemies.length + (dynamic ? 0 : state.schedule.length - state.spawnIndex)}</b></span>${objective}`;
     const event = [...state.events].reverse().find(e => !['spawn', 'impact', 'explosion'].includes(e.kind) && state.time - e.time < 3);
     const messages: Partial<Record<GameEvent['kind'], string>> = {
-      capture: '¡CAPTURA DETECTADA! Intercepta al abductor', extraction: 'HAZ ACTIVO · Mantén E / Y pulsado hasta completar el ascenso', falling: 'COLONO EN CAÍDA · Atrápalo antes de llegar al suelo',
+      capture: '¡CAPTURA DETECTADA! Intercepta al abductor', extraction: helicopter ? 'RECOGIDA EN CURSO · Mantén E/Y, cerca del suelo y a baja velocidad' : 'HAZ ACTIVO · Mantén E / Y pulsado hasta completar el ascenso', falling: 'COLONO EN CAÍDA · Atrápalo antes de llegar al suelo',
       landing: 'COLONO EN TIERRA · Ha sobrevivido a la caída', rescue: 'COLONO A BORDO · Desciende y frena para entregarlo',
       delivery: 'ENTREGA SEGURA · Portal disponible en el radar', lost: 'COLONO PERDIDO', mutation: 'ABDUCCIÓN COMPLETADA · WRAITH ACTIVO',
       'bomb-charge': 'CARGANDO BOMBA', bomb: 'BOMBA DETONADA', portal: 'SALTO COMPLETADO · +1000 por el primer salto',
       'player-hit': 'NAVE DESTRUIDA', respawn: 'REAPARICIÓN · ESCUDO TEMPORAL',
     };
     const message = !state.player.alive ? `REAPARICIÓN EN ${Math.max(0, state.respawnTimer).toFixed(1)} s`
-      : extracting ? `EXTRACCIÓN EN CURSO · Mantén ${gamepad ? 'Y/△' : 'E'} y la nave cerca`
+      : extracting ? `${helicopter ? 'RECOGIDA' : 'EXTRACCIÓN'} EN CURSO · Mantén ${gamepad ? 'Y/△' : 'E'} y el vehículo cerca`
+      : helicopter && capacity !== null && passengers >= capacity
+        ? `CABINA LLENA (${passengers}/${capacity}) · Entrega en ${SAFE_BASE.name} a baja velocidad`
       : passengers > 0 ? `${passengers} A BORDO · Puedes recoger más o aterrizar en ${SAFE_BASE.name}`
       : carrying ? `COLONO A BORDO · Baja al terreno y frena por debajo de 22 u/s`
       : state.colonists.some(c => c.status === 'falling') ? 'COLONO EN CAÍDA · Busca ↓ en el radar y atrápalo'
       : event && messages[event.kind] ? messages[event.kind]!
       : state.missionMode === 'rescue' && state.colonists.some(c => c.status === 'ground')
-        ? `MODO RESCATISTA · Mantén ${gamepad ? 'Y/△' : 'E'} sobre los colonos para subirlos a bordo`
+        ? helicopter
+          ? `HELICÓPTERO · Desciende, frena a menos de 20 u/s y mantén ${gamepad ? 'Y/△' : 'E'} para recoger`
+          : `MODO RESCATISTA · Mantén ${gamepad ? 'Y/△' : 'E'} sobre los colonos para subirlos a bordo`
       : state.portal.ready ? `PORTAL LISTO · ${gamepad ? 'NORTE Y/△' : 'E'} cerca del anillo para saltar`
       : dynamic && state.missionMode === 'defense' ? `DEFENSA POR ZONAS · ${remaining}s · ${live}/${goal.minimum} supervivientes`
          : 'PROTEGE A LOS COLONOS · Usa el radar para localizar capturas';
