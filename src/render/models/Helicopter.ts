@@ -4,6 +4,12 @@ import {
 import type { Material } from 'three/webgpu';
 import { emission, metal } from '../materials';
 
+/** Sized for gameplay parity with the classic ship (the original oversized
+ * showcase value was 1.18). Do not modify rotor geometry or animation to
+ * compensate: a single uniform scale preserves the accepted silhouette.
+ */
+export const HELICOPTER_GAME_SCALE = 0.56;
+
 /** Faceted side silhouette instead of spheres: readable in the 2.5D camera
  * at ordinary gameplay size and evocative of a twin-engine utility helicopter.
  * The craft faces +X; +Z is the camera-facing door/window side.
