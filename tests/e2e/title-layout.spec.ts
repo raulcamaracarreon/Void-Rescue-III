@@ -11,6 +11,10 @@ for (const [width, height] of [[1280, 720], [1084, 609], [960, 540]] as const) {
       Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [] }));
     await page.goto(info.project.metadata.backend === 'webgl2' ? '/?backend=webgl2' : '/');
     await page.waitForFunction(() => Boolean(window.__VOID_RESCUE__));
+    // The longest protocol copy plus helicopter-specific instructions should
+    // still fit without cutting off any action at ordinary desktop sizes.
+    await page.getByRole('combobox', { name: 'Protocolo de rescate' }).selectOption('protected');
+    await page.getByRole('combobox', { name: 'Vehículo', exact: true }).selectOption('helicopter');
 
     const layout = await page.evaluate(() => {
       const rect = (selector: string) => {
