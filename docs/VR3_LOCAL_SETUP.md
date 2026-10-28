@@ -151,4 +151,17 @@ npx vitest run tests/unit/core.test.ts tests/unit/vehicle-profiles.test.ts
 npx playwright test tests/e2e/flight.spec.ts
 ```
 
+**Resultados recibidos del usuario (27/10/2026):** compilación correcta (`tsc --noEmit && vite build`), **15/15** unitarias de `core.test.ts`, **3/4** unitarias de perfiles, **12/12** Playwright de vuelo en ambos backends. La única falla fue un error en `vehicle-profiles.test.ts`: esperaba un disparo en `CONFIG.startX + 5`, pero en el primer tick se mueve primero la nave y luego también avanza el proyectil, dejando `x = 368.0516896151257`. Se corrigió la aserción **en GitHub**, sin cambiar la simulación (commit `b9010b88`). No interpretar esta falla de test como regresión del juego.
+
+**Revalidación mínima del caso corregido:**
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npx vitest run tests/unit/vehicle-profiles.test.ts -t "calcula el primer paso"
+```
+
+La rama ya existe localmente, por lo que no repetir `git switch --track`. No ejecutar de nuevo toda la batería ni activar GitHub Actions. El incremento continúa en desarrollo y pendiente de aceptación.
+
 Si la rama ya existe localmente, usar `git switch feat/phase4-vehicle-profiles` y `git merge --ff-only origin/feat/phase4-vehicle-profiles` en vez de `--track`. No se han ejecutado estas pruebas desde el conector GitHub. No activar GitHub Actions ni publicar Pages. La fase 4 no se considera completada.
