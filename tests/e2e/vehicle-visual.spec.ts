@@ -53,3 +53,21 @@ test('el perfil experimental no se activa al iniciar partida normal ni acepta ve
   expect(await page.evaluate(() => window.__VOID_RESCUE__!.getMetrics().vehicleId)).toBe('ship');
   expect(await page.evaluate(() => window.__VOID_RESCUE__!.getMetrics().renderedModel)).toBe('ship');
 });
+
+test('helicóptero utilitario: acelera más que la nave y llega al ras del suelo en reconocimiento', async ({ page }) => {
+  await page.evaluate(() => window.__VOID_RESCUE__!.loadScenario('flight-basic', 8042, 'helicopter'));
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getMetrics().renderedModel)).toBe('helicopter');
+  await page.locator('#game').focus();
+  await page.keyboard.down('KeyD');
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().player.vx), { timeout: 10000 }).toBeGreaterThan(75);
+  await page.keyboard.up('KeyD');
+  await page.keyboard.down('KeyS');
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().player.y), { timeout: 10000 }).toBeLessThan(21);
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().player.vy), { timeout: 10000 }).toBe(0);
+  await page.keyboard.up('KeyS');
+  expect(await page.evaluate(() => window.__VOID_RESCUE__!.getState().vehicleId)).toBe('helicopter');
+});
