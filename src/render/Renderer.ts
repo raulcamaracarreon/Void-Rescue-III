@@ -5,9 +5,12 @@ import {
 import type { Object3D, BufferGeometry, Material } from 'three/webgpu';
 import { nearCameraX, wrappedLerp } from '../core/WorldWrap';
 import { CONFIG } from '../game/config';
+import type { VehicleId } from '../game/VehicleProfile';
 import type { FlightState } from '../game/Simulation';
 import { CameraRig } from './CameraRig';
 import { createShip } from './models/Ship';
+import { animateHelicopter, createHelicopter } from './models/Helicopter';
+import type { HelicopterModel } from './models/Helicopter';
 import { emission } from './materials';
 import { WorldScene } from './WorldScene';
 import { defaultLandscapePreferences, resolveLandscape } from '../landscape/LandscapeConfig';
@@ -31,6 +34,7 @@ export interface RenderMetrics {
   backend: 'webgpu' | 'webgl2'; fps: number; frameMs: number;
   drawCalls: number; triangles: number; geometries: number; textures: number;
   width: number; height: number; pixelRatio: number; cameraX: number; viewWidth: number;
+  vehicleId: VehicleId;
 }
 
 export class FlightRenderer {
@@ -43,6 +47,8 @@ export class FlightRenderer {
   private seed: number;
   private landscapePreferences: LandscapePreferences;
   private readonly ship = createShip();
+  private helicopter: HelicopterModel | null = null;
+  private currentVehicle: VehicleId = 'ship';
   readonly combat = new CombatVisuals();
   private readonly shots = new Map<number, Mesh>();
   private readonly shotGeometry = new BoxGeometry(3.4, 0.3, 0.15);
@@ -99,8 +105,25 @@ export class FlightRenderer {
 
   get viewWidth(): number { return CONFIG.viewHeight * this.width / this.height; }
 
+  /** Instantiate the alternate visual only if the experimental profile is used.
+   * The default ship path allocates no helicopter meshes or materials.
+   */
+  private helicopterVisual(): HelicopterModel {
+    if (!this.helicopter) {
+      this.helicopter = createHelicopter();
+      this.scene.add(this.helicopter.group);
+    }
+    return this.helicopter;
+  }
+
   reset(state: FlightState, title: boolean): void {
+    this.currentVehicle = state.vehicleId;
     this.rig.reset(state.player.x, title);
+    if (state.vehicleId === 'helicopter') {
+      const model = this.helicopterVisual();
+      model.mainRotor.rotation.y = 0;
+      model.tailRotor.rotation.z = 0;
+    }
     this.facingAngle = state.player.facing === 1 ? 0 : Math.PI;
     this.frameTimes = [];
     if (state.seed !== this.seed) {
@@ -135,27 +158,41 @@ export class FlightRenderer {
     this.camera.position.x = this.rig.x;
     this.world.update(this.rig.x, this.viewWidth, state.missionMode, reducedMotion);
     this.combat.update(state, this.rig.x, this.viewWidth, reducedMotion, elapsed);
-    this.ship.group.visible = p.alive || title;
+    this.currentVehicle = state.vehicleId;
+    const helicopter = state.vehicleId === 'helicopter' ? this.helicopterVisual() : null;
+    this.ship.group.visible = !helicopter && (p.alive || title);
+    if (this.helicopter) this.helicopter.group.visible = Boolean(helicopter) && (p.alive || title);
     if (!reducedMotion) {
       const impact = state.events.find(e => ['player-hit', 'bomb'].includes(e.kind) && state.time - e.time < 0.45);
       if (impact) this.camera.position.x += Math.sin(state.time * 75) * (0.45 - (state.time - impact.time)) * 2;
     }
     this.renderer.toneMappingExposure = state.colonyLost ? 0.9 : 1.25;
     const y = active ? p.previousY + (p.y - p.previousY) * alpha : p.y;
-    this.ship.group.position.set(nearCameraX(playerX, this.rig.x, CONFIG.worldWidth), y, 0);
-    const targetAngle = p.facing === 1 ? 0 : Math.PI;
-    this.facingAngle += (targetAngle - this.facingAngle) * (reducedMotion ? 1 : 1 - Math.exp(-24 * elapsed));
-    // Mirror the silhouette while keeping its readable, detailed side toward the camera.
+    const x = nearCameraX(playerX, this.rig.x, CONFIG.worldWidth);
     const scale = title ? 2.1 : 1;
-    this.ship.group.scale.set(scale * p.facing, scale, scale);
-    this.ship.group.rotation.y = Math.sin(this.facingAngle) * 0.3;
-    this.ship.group.rotation.x = 0.24 + (reducedMotion ? 0 : p.vy * 0.006);
-    this.ship.group.rotation.z = reducedMotion ? 0 : p.vy * 0.0018 * p.facing;
-    this.ship.thrust.value = reducedMotion ? 0.5 : 0.55 + p.thrust * 0.4;
-    for (const plume of this.ship.exhausts) {
-      const length = 2.5 + p.thrust * 5;
-      plume.scale.set(length, 0.65 + p.thrust * 0.18, 1);
-      plume.position.x = -4.56 - length / 2;
+    if (helicopter) {
+      helicopter.group.position.set(x, y, 0);
+      helicopter.group.scale.set(scale * p.facing, scale, scale);
+      helicopter.group.rotation.y = 0;
+      helicopter.group.rotation.x = reducedMotion ? 0 : p.vy * 0.004;
+      helicopter.group.rotation.z = reducedMotion ? 0 : -p.vx * 0.0015;
+      if (p.alive && active) animateHelicopter(helicopter, elapsed, reducedMotion);
+    } else {
+      // Preserve the established ship pose/exhaust calculations byte-for-byte.
+      this.ship.group.position.set(x, y, 0);
+      const targetAngle = p.facing === 1 ? 0 : Math.PI;
+      this.facingAngle += (targetAngle - this.facingAngle) * (reducedMotion ? 1 : 1 - Math.exp(-24 * elapsed));
+      // Mirror the silhouette while keeping its readable, detailed side toward the camera.
+      this.ship.group.scale.set(scale * p.facing, scale, scale);
+      this.ship.group.rotation.y = Math.sin(this.facingAngle) * 0.3;
+      this.ship.group.rotation.x = 0.24 + (reducedMotion ? 0 : p.vy * 0.006);
+      this.ship.group.rotation.z = reducedMotion ? 0 : p.vy * 0.0018 * p.facing;
+      this.ship.thrust.value = reducedMotion ? 0.5 : 0.55 + p.thrust * 0.4;
+      for (const plume of this.ship.exhausts) {
+        const length = 2.5 + p.thrust * 5;
+        plume.scale.set(length, 0.65 + p.thrust * 0.18, 1);
+        plume.position.x = -4.56 - length / 2;
+      }
     }
     const ids = new Set(state.shots.map(shot => shot.id));
     for (const [id, mesh] of this.shots) {
@@ -193,7 +230,7 @@ export class FlightRenderer {
       drawCalls: info.render.drawCalls, triangles: info.render.triangles,
       geometries: info.memory.geometries, textures: info.memory.textures,
       width: this.width, height: this.height, pixelRatio: this.renderer.getPixelRatio(),
-      cameraX: this.rig.x, viewWidth: this.viewWidth };
+      cameraX: this.rig.x, viewWidth: this.viewWidth, vehicleId: this.currentVehicle };
   }
 
   dispose(): void {
