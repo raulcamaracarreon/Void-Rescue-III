@@ -200,7 +200,7 @@ export class Interface {
 
     root.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => {
       button.addEventListener('click', () => {
-        const action = button.dataset.action as Exclude<keyof UiActions, 'preferences' | 'pilot'>;
+        const action = button.dataset.action as Exclude<keyof UiActions, 'preferences' | 'pilot' | 'vehicle'>;
         actions[action]();
       });
     });
