@@ -46,7 +46,7 @@ Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar
 
 ### Fase 4 iniciada: perfiles de vehículos (27/10/2026)
 
-En la rama aislada `feat/phase4-vehicle-profiles` comenzamos por un contrato determinista de dinámica. La nave actual sigue siendo el perfil predeterminado con todos sus parámetros heredados. Un perfil de helicóptero existe **solo como dinámica experimental en la simulación**: no hay modelo visual ni opción seleccionable para el jugador. La siguiente entrega abordará modelo/animación, selección de vehículo y comportamiento de rescate, conservando combate, oleadas y puntuación. Las pruebas nuevas están **pendientes de ejecución local**. `main` no se modifica.
+En la rama aislada `feat/phase4-vehicle-profiles` comenzamos por un contrato determinista de dinámica. La nave actual sigue siendo el perfil predeterminado con todos sus parámetros heredados. Un perfil de helicóptero existe **solo como dinámica experimental en la simulación**: no hay modelo visual ni opción seleccionable para el jugador. La siguiente entrega abordará modelo/animación, selección de vehículo y comportamiento de rescate, conservando combate, oleadas y puntuación. La primera ejecución local confirmó **build aprobado, 15/15 pruebas de núcleo y 12/12 E2E de vuelo**; las pruebas de perfiles alcanzaron **3/4**, con una expectativa incorrecta sobre la posición inicial de un proyectil. Se corrigió únicamente la prueba en GitHub y se espera su validación focalizada. `main` no se modifica.
 
 ### Próximos hitos del plan (corte 26/10/2026)
 
