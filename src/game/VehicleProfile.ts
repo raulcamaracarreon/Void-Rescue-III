@@ -55,7 +55,7 @@ export const HELICOPTER_PROFILE: VehicleProfile = {
     maxSpeed: 90,
     verticalSpeed: 42,
     verticalResponse: 9,
-    groundClearance: 3.8,
+    groundClearance: 2.0, // matches the smaller landing wheels (0.56 visual scale)
   },
   weapon: { projectileSpeed: 150, muzzleOffset: 5 },
 };
