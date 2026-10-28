@@ -152,7 +152,7 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] **Próxima entrega:** modelo visual 3D del helicóptero, contrato de render compartido, parámetros de interacción/rescate y entrada de selección antes de partida. No activar el helicóptero para jugadores ni alterar récords/comparabilidad hasta verificar paridad.
 - [ ] **Decisión de producto pendiente de confirmar:** variantes elegibles dentro del mismo juego (propuesta preferida para reutilizar reglas) frente a modos/episodios separados. El incremento técnico es compatible con ambas y no impone la decisión.
 
-### 4. Vehículos y perfiles de movimiento
+**Criterios de aceptación originales de la fase 4 (siguen vigentes):**
 
 - Un contrato común de vehículo (modelo visual, movimiento, armas, capacidad, sonido, acciones).
 - Primer perfil alternativo: helicóptero de rescate con parámetros propios de ascenso, descenso, inercia y recogida.
