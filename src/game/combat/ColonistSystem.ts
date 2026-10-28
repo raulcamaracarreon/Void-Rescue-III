@@ -79,7 +79,10 @@ export function updateColonists(ctx: CombatContext, dt: number, beamHeld = false
         ctx.emit('falling', c.x, c.y);
         continue;
       }
-      const targetX = wrapX(p.x, CONFIG.worldWidth), targetY = p.y - 2.6;
+      // A helicopter boards passengers through its cabin close to the wheels;
+      // the original spacecraft still pulls them to its lower beam emitter.
+      const targetX = wrapX(p.x, CONFIG.worldWidth);
+      const targetY = s.vehicleId === 'helicopter' ? p.y - 0.5 : p.y - 2.6;
       const dx = deltaX(c.x, targetX), dy = targetY - c.y;
       const stepX = rescue.extractionHorizontalSpeed * dt;
       const stepY = rescue.extractionSpeed * dt;
