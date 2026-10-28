@@ -50,3 +50,8 @@ Antes de programar, examinar archivos reales y pruebas. No asumir nombres, tipos
 6. Documentar resultados y pendientes sin inventar pruebas aprobadas.
 
 El esquema completo de fases y límites está en `docs/VR3_ROADMAP.md`. Los artefactos VR2 previos son referencias, no prueba de que las funciones planeadas en VR3 ya existan.
+
+
+## Estado más reciente fase 4 — selector y rescate (27/10/2026)
+
+**Actualiza la interpretación de las notas históricas anteriores que decían «solo en diagnóstico»**: en `feat/phase4-vehicle-profiles` ya hay **selector previo al vuelo** (título) persistido en `void-rescue-iii.vehicle.v1`, aplicado a partidas reales con `Simulation(..., selectedVehicle)`. El helicóptero tiene **2 plazas**, recogida a baja altura y velocidad, entrega en base y cable estrecho; la nave conserva reglas originales. Récords diferenciados por vehículo, históricos sin ID atribuidos a nave. Sonido, tamaño y animación del helicóptero fueron aceptados por el usuario **antes** de este incremento y no deben cambiarse sin nueva petición. Pendientes locales: build, 16 unitarias (rescate, récords y perfiles) y 12 E2E (selección y rescate clásico). No declarar fase 4 cerrada ni fusionar `main` sin autorización.
