@@ -2,17 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { animateHelicopter, createHelicopter } from '../../src/render/models/Helicopter';
 
 describe('fase 4 — modelo visual del helicóptero', () => {
-  it('construye un helicóptero 2.5D con cabina, cola, patines y rotores', () => {
+  it('construye un helicóptero utilitario angular con cabina, motores, ruedas y rotores', () => {
     const model = createHelicopter();
     expect(model.group.name).toBe('vehicle-helicopter');
     expect(model.group.getObjectByName('cabin')).toBeDefined();
     expect(model.group.getObjectByName('cockpit')).toBeDefined();
     expect(model.group.getObjectByName('tail-boom')).toBeDefined();
-    expect(model.group.children.filter(node => node.name === 'landing-skid')).toHaveLength(2);
+    expect(model.group.children.filter(node => node.name === 'landing-wheel')).toHaveLength(2);
+    expect(model.group.children.filter(node => node.name === 'turbine-engine')).toHaveLength(2);
+    expect(model.group.getObjectByName('sliding-door')).toBeDefined();
+    expect(model.group.getObjectByName('tail-fin')).toBeDefined();
     expect(model.group.getObjectByName('main-rotor')).toBe(model.mainRotor);
     expect(model.group.getObjectByName('tail-rotor')).toBe(model.tailRotor);
-    expect(model.mainRotor.children).toHaveLength(2);
+    expect(model.mainRotor.children).toHaveLength(3);
     expect(model.tailRotor.children).toHaveLength(3);
+  });
+
+  it('mantiene un perfil lateral más grande que el prototipo de juguete', () => {
+    const model = createHelicopter();
+    model.group.updateMatrixWorld(true);
+    const wheel = model.group.getObjectByName('landing-wheel')!;
+    const boom = model.group.getObjectByName('tail-boom')!;
+    const cabin = model.group.getObjectByName('cabin')!;
+    expect(wheel.position.y).toBeLessThan(-2);
+    expect(boom).toBeDefined();
+    expect(cabin).toBeDefined();
+    expect(model.tailRotor.position.x).toBeLessThan(-10);
+    expect(model.mainRotor.position.y).toBeGreaterThan(3);
   });
 
   it('anima rotores independientemente sin intervenir en la simulación', () => {
