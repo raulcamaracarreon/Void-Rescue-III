@@ -195,10 +195,11 @@ export function helicopterAttitude(vx: number, vy: number, facing: 1 | -1,
   if (reducedMotion) return { bankX: 0, pitchZ: 0 };
   const stableVx = Number.isFinite(vx) ? vx : 0;
   const stableVy = Number.isFinite(vy) ? vy : 0;
-  return {
-    bankX: Math.max(-0.14, Math.min(0.14, -stableVx * 0.0015)),
-    pitchZ: Math.max(-0.22, Math.min(0.22, stableVy * 0.006)) * facing,
-  };
+  const bankX = Math.max(-0.14, Math.min(0.14, -stableVx * 0.0015));
+  const pitchZ = Math.max(-0.22, Math.min(0.22, stableVy * 0.006)) * facing;
+  // -0 and +0 render identically, but returning canonical +0 also keeps
+  // deterministic attitude snapshots and strict equality checks stable.
+  return { bankX: bankX === 0 ? 0 : bankX, pitchZ: pitchZ === 0 ? 0 : pitchZ };
 }
 
 export type HelicopterModel = ReturnType<typeof createHelicopter>;
