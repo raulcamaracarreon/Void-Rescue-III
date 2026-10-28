@@ -25,3 +25,14 @@
 .pause-engine-pitch input[type=range]{width:7cqw;min-width:6cqw;cursor:pointer}
 .pause-engine-pitch output{white-space:nowrap}
 @media(max-width:1400px){.title-engine-pitch{font-size:.82cqw}.pause-engine-pitch{font-size:.85cqw}}
+
+
+/* Preflight vehicle choice is separate from the crowded mission selectors.
+ * Keep the descriptive line short to avoid pushing controls off smaller views. */
+.vehicle-setting{display:flex;align-items:flex-start;gap:.7cqw;flex-wrap:wrap;max-width:43cqw;
+  margin:-.18cqw 0 .75cqw;font:.68cqw var(--mono);color:#b4d8cd}
+.vehicle-setting label{display:flex;align-items:center;gap:.6cqw;white-space:nowrap}
+.vehicle-setting select{max-width:18cqw;cursor:pointer}
+.vehicle-help{display:block;flex:1 1 18cqw;min-width:14cqw;font:clamp(10px,.62cqw,13px) var(--mono);
+  line-height:1.4;color:#94bfb4}
+@media(max-width:1400px){.vehicle-setting{font-size:.85cqw}.vehicle-help{font-size:clamp(10px,.72cqw,14px)}}
