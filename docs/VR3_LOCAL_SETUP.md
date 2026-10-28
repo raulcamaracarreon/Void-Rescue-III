@@ -165,3 +165,23 @@ npx vitest run tests/unit/vehicle-profiles.test.ts -t "calcula el primer paso"
 La rama ya existe localmente, por lo que no repetir `git switch --track`. No ejecutar de nuevo toda la batería ni activar GitHub Actions. El incremento continúa en desarrollo y pendiente de aceptación.
 
 Si la rama ya existe localmente, usar `git switch feat/phase4-vehicle-profiles` y `git merge --ff-only origin/feat/phase4-vehicle-profiles` en vez de `--track`. No se han ejecutado estas pruebas desde el conector GitHub. No activar GitHub Actions ni publicar Pages. La fase 4 no se considera completada.
+
+
+## Fase 4 — segundo incremento: modelo de helicóptero (27/10/2026)
+
+**Primer incremento validado:** build correcto, 15/15 unitarias de núcleo y 12/12 E2E de vuelo; la prueba de primer tick corregida pasó **1/1** (3 omitidas solo por el filtro). No repetir sus pruebas sin cambios funcionales.
+
+**Incremento 2 subido a `feat/phase4-vehicle-profiles` y todavía NO validado localmente:** geometría del helicóptero y rotores animados, `Renderer` capaz de representar `vehicleId: 'helicopter'` y volver a la nave, métricas de modelo visible y ruta de diagnóstico DEV. El menú, las preferencias y las partidas normales usan exclusivamente `ship`.
+
+Validación acotada (hay cambios de render, por eso sí se incluye una regresión del vuelo antiguo):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/helicopter-model.test.ts tests/unit/vehicle-profiles.test.ts
+npx playwright test tests/e2e/vehicle-visual.spec.ts tests/e2e/flight.spec.ts
+```
+
+Se esperan **7 pruebas unitarias** (3 de modelo + 4 perfiles) y **16 E2E** (4 nuevas de vehículo visual más 12 de vuelo en ambos backends). Las cifras son previstas, **no resultados**. La comprobación visual manual debe abrir `npm run dev`, usar herramientas de diagnóstico solo en modo desarrollo y corroborar que el modelo parece helicóptero, que los rotores giran y que la nave clásica reaparece al cargar un escenario sin seleccionar vehículo. No usar `main` para estas pruebas; no ejecutar GitHub Actions ni publicar.
