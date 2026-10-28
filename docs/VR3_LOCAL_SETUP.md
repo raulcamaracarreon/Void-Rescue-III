@@ -292,3 +292,23 @@ No se ha cambiado `main`; no fusionar/deploy ni afirmar tests aprobados antes de
 
 
 **Git for Windows:** durante `git fetch`/compactación de objetos, se informaron advertencias `Unlink of file '.git/objects/pack/*.idx' failed` antes de que `git merge --ff-only` confirmara `Fast-forward` de `79ed3dc` a `ae3f283`. Probablemente archivos temporalmente bloqueados por un proceso en Windows; es **independiente** del error de TypeScript. No eliminar archivos `.idx` a mano. Si se repite, cerrar editores y procesos que inspeccionan el repositorio y continuar con verificación no destructiva (p. ej. `git status --short`, `git fsck --no-reflogs`) antes de considerar mantenimiento.
+
+
+## Portada a dos columnas — corrección de zoom 100 % (27/10/2026)
+
+**Incidencia:** el usuario detectó en dos capturas que el menú inicial crecía verticalmente y el final de la lista de opciones quedaba recortado al 100 % de zoom. La causa era `title-copy` monocolumna con posición absoluta y contenido cada vez mayor. Se reestructuró en `title-hero` (izquierda: marca/descripción/controles) y `title-config` (derecha: ajustes y acciones) mediante grid; los campos de misión ocupan dos columnas. La tarjeta de configuración se ubica a la izquierda del helicóptero, sin tapar el escenario completo. Los controles de teclado/mando, persistencia, rescate y récords **no cambian**.
+
+El CSS en `src/ui/settings.css` está optimizado para 16:9 a resolución normal. Solo ante un viewport muy estrecho se habilita desplazamiento interno de la portada, no reducción de zoom ni desplazamiento de toda la página.
+
+**Validación pendiente de este nuevo cambio visual** (no repetir las 16 unitarias de rescate):
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 -c maintenance.auto=false fetch origin
+git -c gc.auto=0 -c maintenance.auto=false merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx playwright test tests/e2e/title-layout.spec.ts
+npm run dev
+```
+
+Esperadas **8 E2E** (4 situaciones × 2 motores); no están ejecutadas. A zoom de navegador 100 %, revisar el menú normal a 1084×609 o pantalla de escritorio habitual, seleccionar **Helicóptero / Rescatista / Protegido**, confirmar que se ve completa la descripción del protocolo y que funcionan todos los botones sin desplazamientos ni superposiciones. Si a 100 % aún existe desbordamiento en escritorio, ajustar el CSS antes de aceptar el incremento. El juego no ha sido desplegado ni fusionado a `main`.
