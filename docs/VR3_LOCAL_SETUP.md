@@ -278,15 +278,11 @@ Se esperan **11 unitarias** (5 del modelo y 6 de perfiles) y **8 E2E** (4 escena
 
 El selector de vehículo está en **pantalla de inicio**, antes de elegir `INICIAR VUELO`, junto a un texto que describe las reglas de rescate. La elección se conserva entre sesiones y `start()` carga el vehículo elegido en una **partida real**, no solo en diagnóstico. El helicóptero admite dos pasajeros y requiere mantener `E` (teclado) / `Y` (mando) estando a baja altura y menos de 20 unidades/s, luego entregarlos despacio en `FORTALEZA 01` en misión Rescatista. La nave mantiene su extracción y capacidad originales. Los récords se separan por vehículo y los previos se atribuyen a nave sin perderlos.
 
-**Primera ejecución local:** las **16 unitarias pasaron** (6 rescate, 4 récords, 6 perfiles). `npm run build` se detuvo por `TS2300: Duplicate identifier 'VehicleId'` en `src/app/GameApp.ts`, y Playwright no pudo cargar la aplicación por el mismo error de parseo. La segunda importación del tipo fue eliminada en GitHub (commit `36d87ea4`). **El usuario revalidó `npm run build`: éxito, 59 módulos Vite compilados en 326 ms** tras fast-forward a `2a34a9f`. La advertencia de bundle mayor de 900 KB no bloquea. Ya están aprobadas las 16 unitarias y el build; **solo ejecutar E2E:**
+**Primera ejecución local:** las **16 unitarias pasaron** (6 rescate, 4 récords, 6 perfiles). `npm run build` se detuvo por `TS2300: Duplicate identifier 'VehicleId'` en `src/app/GameApp.ts`, y Playwright no pudo cargar la aplicación por el mismo error de parseo. La segunda importación del tipo fue eliminada en GitHub (commit `36d87ea4`). **El usuario revalidó `npm run build`: éxito, 59 módulos Vite compilados en 326 ms** tras fast-forward a `2a34a9f`. La advertencia de bundle mayor de 900 KB no bloquea. Ya están aprobadas las 16 unitarias y el build; **las E2E también se aprobaron: 12/12 en 26.2 s** (6 en Chromium automático + 6 en WebGL2). Ya no hay que repetir pruebas automáticas para este incremento. **Siguiente paso: prueba de juego manual.**
 
 ```powershell
 cd "E:\Proyectos\JUEGOS\VoidRescue-III"
-git -c gc.auto=0 fetch origin
-git merge --ff-only origin/feat/phase4-vehicle-profiles
-npx playwright test tests/e2e/vehicle-selection.spec.ts tests/e2e/rescue-beam.spec.ts
-
-# Una vez terminadas las E2E y sin errores, iniciar prueba manual:
+# Con la versión ya actualizada y comprobada:
 npm run dev
 ```
 
