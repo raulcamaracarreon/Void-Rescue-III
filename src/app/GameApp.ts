@@ -5,7 +5,6 @@ import type { VehicleId } from '../game/VehicleProfile';
 import { IDLE_INPUT, SCENARIOS, Simulation } from '../game/Simulation';
 import type { ScenarioName } from '../game/Simulation';
 import { vehicleProfile } from '../game/VehicleProfile';
-import type { VehicleId } from '../game/VehicleProfile';
 import { InputManager } from '../input/InputManager';
 import { FlightRenderer } from '../render/Renderer';
 import { AudioEngine, ENGINE_PITCH_DEFAULT, normalizeEnginePitch } from '../audio/AudioEngine';
