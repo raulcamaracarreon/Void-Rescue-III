@@ -185,6 +185,22 @@ export function createHelicopter() {
   return { group, mainRotor, tailRotor };
 }
 
+/** Side-view attitude of a +X-facing helicopter.
+ * A positive vertical velocity lifts the NOSE, not the tail. Mirroring X for
+ * left-facing flight also reverses the rotation so the nose still tilts up.
+ * Banking around X is only a subtle lateral-velocity cue, never the pitch.
+ */
+export function helicopterAttitude(vx: number, vy: number, facing: 1 | -1,
+  reducedMotion: boolean): { bankX: number; pitchZ: number } {
+  if (reducedMotion) return { bankX: 0, pitchZ: 0 };
+  const stableVx = Number.isFinite(vx) ? vx : 0;
+  const stableVy = Number.isFinite(vy) ? vy : 0;
+  return {
+    bankX: Math.max(-0.14, Math.min(0.14, -stableVx * 0.0015)),
+    pitchZ: Math.max(-0.22, Math.min(0.22, stableVy * 0.006)) * facing,
+  };
+}
+
 export type HelicopterModel = ReturnType<typeof createHelicopter>;
 
 /** Visual-only animation. Pausing/reduced-motion never changes simulation. */
