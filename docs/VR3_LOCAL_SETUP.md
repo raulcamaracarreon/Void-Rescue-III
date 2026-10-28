@@ -136,3 +136,19 @@ npx playwright test tests/e2e/decor-paint.spec.ts -g "duplicado superpuesto|inde
 ```
 
 Playwright aprobó **8/8 casos focalizados en 20.3 s** (cuatro escenarios por backend); el usuario confirmó visualmente que la copia ya no arrastra el original. Las 20 E2E generales corresponden a la versión anterior.
+
+
+## Fase 4 — primera validación del contrato de vehículos (27/10/2026)
+
+Los cambios de esta fase están únicamente en la rama `feat/phase4-vehicle-profiles`. `main` contiene ya el incremento Paint/selección fusionado mediante PR #2, sin cambios de vehículos. Todavía **no hay helicóptero habilitado** en el juego ni selector visible: primero se comprueba que el perfil de la nave mantiene idénticos controles y dinámica en los 60 pasos por segundo.
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git switch --track origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/core.test.ts tests/unit/vehicle-profiles.test.ts
+npx playwright test tests/e2e/flight.spec.ts
+```
+
+Si la rama ya existe localmente, usar `git switch feat/phase4-vehicle-profiles` y `git merge --ff-only origin/feat/phase4-vehicle-profiles` en vez de `--track`. No se han ejecutado estas pruebas desde el conector GitHub. No activar GitHub Actions ni publicar Pages. La fase 4 no se considera completada.
