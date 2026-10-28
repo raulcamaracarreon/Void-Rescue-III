@@ -278,18 +278,22 @@ Se esperan **11 unitarias** (5 del modelo y 6 de perfiles) y **8 E2E** (4 escena
 
 El selector de vehículo está en **pantalla de inicio**, antes de elegir `INICIAR VUELO`, junto a un texto que describe las reglas de rescate. La elección se conserva entre sesiones y `start()` carga el vehículo elegido en una **partida real**, no solo en diagnóstico. El helicóptero admite dos pasajeros y requiere mantener `E` (teclado) / `Y` (mando) estando a baja altura y menos de 20 unidades/s, luego entregarlos despacio en `FORTALEZA 01` en misión Rescatista. La nave mantiene su extracción y capacidad originales. Los récords se separan por vehículo y los previos se atribuyen a nave sin perderlos.
 
-**Pruebas necesarias, aún NO ejecutadas desde GitHub (16 unitarias + 12 E2E previstas):**
+**Primera ejecución local:** las **16 unitarias pasaron** (6 rescate, 4 récords, 6 perfiles). `npm run build` se detuvo por `TS2300: Duplicate identifier 'VehicleId'` en `src/app/GameApp.ts`, y Playwright no pudo cargar la aplicación por el mismo error de parseo. La segunda importación del tipo fue eliminada en GitHub (commit `36d87ea4`), aún sin ejecución local posterior. **No repetir unitarias:**
 
 ```powershell
 cd "E:\Proyectos\JUEGOS\VoidRescue-III"
 git -c gc.auto=0 fetch origin
 git merge --ff-only origin/feat/phase4-vehicle-profiles
 npm run build
-npx vitest run tests/unit/vehicle-rescue.test.ts tests/unit/vehicle-records.test.ts tests/unit/vehicle-profiles.test.ts
-npx playwright test tests/e2e/vehicle-selection.spec.ts tests/e2e/rescue-beam.spec.ts
+if ($LASTEXITCODE -eq 0) {
+  npx playwright test tests/e2e/vehicle-selection.spec.ts tests/e2e/rescue-beam.spec.ts
+}
 npm run dev
 ```
 
 Para prueba manual, elegir `Vehículo: Helicóptero de rescate` y `MISIÓN: Rescatista` en el **menú inicial** y pulsar `INICIAR VUELO`. No se requiere consola. Descender al ras del terreno, frenar, mantener E/Y junto a un colono hasta recogerlo; el HUD debe indicar `A BORDO 1/2`. Al recoger dos debe indicar cabina llena y exigir entrega en Fortaleza 01 para obtener plazas libres. Probar luego `Vehículo: Nave de rescate` con el haz clásico y comprobar que el audio e inclinaciones siguen como estaban. En récords, verificar selector `Récords: vehículo` y que los registros antiguos sigan en Nave.
 
 No se ha cambiado `main`; no fusionar/deploy ni afirmar tests aprobados antes de resultados reales. Si surge un fallo, corregirlo **en la rama**, sin alterar sonidos/animaciones/tamaños ya aprobados.
+
+
+**Git for Windows:** durante `git fetch`/compactación de objetos, se informaron advertencias `Unlink of file '.git/objects/pack/*.idx' failed` antes de que `git merge --ff-only` confirmara `Fast-forward` de `79ed3dc` a `ae3f283`. Probablemente archivos temporalmente bloqueados por un proceso en Windows; es **independiente** del error de TypeScript. No eliminar archivos `.idx` a mano. Si se repite, cerrar editores y procesos que inspeccionan el repositorio y continuar con verificación no destructiva (p. ej. `git status --short`, `git fsck --no-reflogs`) antes de considerar mantenimiento.
