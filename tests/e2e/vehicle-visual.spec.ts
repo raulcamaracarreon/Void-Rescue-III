@@ -71,3 +71,34 @@ test('helicóptero utilitario: acelera más que la nave y llega al ras del suelo
   await page.keyboard.up('KeyS');
   expect(await page.evaluate(() => window.__VOID_RESCUE__!.getState().vehicleId)).toBe('helicopter');
 });
+
+test('audio: el helicóptero usa rotores/turbina y la nave conserva su motor, con pausa y silencio', async ({ page }) => {
+  // Starting the game grants the browser's normal user gesture for Web Audio.
+  await page.getByRole('button', { name: /INICIAR VUELO/ }).click();
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.initialized)).toBe(true);
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.vehicle)).toBe('ship');
+  expect(await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.helicopterSoundInitialized)).toBe(false);
+
+  await page.evaluate(() => window.__VOID_RESCUE__!.loadScenario('flight-basic', 8042, 'helicopter'));
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.vehicle)).toBe('helicopter');
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.helicopterSoundInitialized)).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().mode)).toBe('paused');
+  await page.getByRole('checkbox', { name: 'Silenciar audio', exact: true }).check();
+  expect(await page.evaluate(() => window.__VOID_RESCUE__!.getState().audio.muted)).toBe(true);
+  await page.getByRole('button', { name: /CONTINUAR VUELO/ }).click();
+
+  await page.evaluate(() => window.__VOID_RESCUE__!.loadScenario('flight-basic', 8042, 'ship'));
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.vehicle)).toBe('ship');
+  // Reusing the synth is expected; its gains are silent while the ship is active.
+  expect(await page.evaluate(() =>
+    window.__VOID_RESCUE__!.getState().audio.helicopterSoundInitialized)).toBe(true);
+});
