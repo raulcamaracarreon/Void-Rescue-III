@@ -4,6 +4,8 @@ import { CONFIG } from '../game/config';
 import type { VehicleId } from '../game/VehicleProfile';
 import { IDLE_INPUT, SCENARIOS, Simulation } from '../game/Simulation';
 import type { ScenarioName } from '../game/Simulation';
+import { vehicleProfile } from '../game/VehicleProfile';
+import type { VehicleId } from '../game/VehicleProfile';
 import { InputManager } from '../input/InputManager';
 import { FlightRenderer } from '../render/Renderer';
 import { AudioEngine, ENGINE_PITCH_DEFAULT, normalizeEnginePitch } from '../audio/AudioEngine';
@@ -24,6 +26,11 @@ import type { LandscapePreferences } from '../landscape/LandscapeConfig';
 
 const LANDSCAPE_SETTINGS_KEY = 'void-rescue-iii.landscape.v1';
 const GAME_SETTINGS_KEY = 'void-rescue-iii.preferences.v1';
+const VEHICLE_SETTINGS_KEY = 'void-rescue-iii.vehicle.v1';
+function readVehicle(): VehicleId {
+  try { return vehicleProfile(localStorage.getItem(VEHICLE_SETTINGS_KEY) as VehicleId).id; }
+  catch { return 'ship'; }
+}
 function readLandscapePreferences(): LandscapePreferences {
   try { return sanitizeLandscapePreferences(JSON.parse(localStorage.getItem(LANDSCAPE_SETTINGS_KEY) ?? 'null')); }
   catch { return defaultLandscapePreferences(); }
@@ -59,9 +66,10 @@ export class GameApp {
   private readonly landscapePanel: LandscapePanel;
   private readonly records = new Records();
   private readonly recordsPanel: RecordsPanel;
-  private run: Pick<PlayerRecord, 'id' | 'pilot' | 'difficulty' | 'missionMode' | 'spawnMode' | 'rescueProtocol' | 'date'> | null = null;
+  private run: Pick<PlayerRecord, 'id' | 'pilot' | 'difficulty' | 'missionMode' | 'spawnMode' | 'rescueProtocol' | 'vehicleId' | 'date'> | null = null;
   private mode: AppMode = 'title';
   private preferences = readPreferences();
+  private selectedVehicle: VehicleId = readVehicle();
   private landscapePreferences = readLandscapePreferences();
   private previousTime = 0;
   private raf = 0;
@@ -74,7 +82,7 @@ export class GameApp {
     const params = new URLSearchParams(location.search);
     const rawSeed = Number(params.get('seed') ?? CONFIG.defaultSeed);
     const seed = Number.isFinite(rawSeed) ? rawSeed >>> 0 : CONFIG.defaultSeed;
-    this.simulation = new Simulation(seed, 'flight-basic', this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol);
+    this.simulation = new Simulation(seed, 'flight-basic', this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol, this.selectedVehicle);
     this.graphics = new FlightRenderer(canvas, seed, params.get('backend') === 'webgl2', this.landscapePreferences);
     this.graphics.renderer.onError = message => this.showError(new Error(message));
     this.graphics.renderer.onDeviceLost = info => this.showError(new Error(`Se perdió el dispositivo gráfico: ${info.message}`));
@@ -82,11 +90,12 @@ export class GameApp {
       start: () => this.start(), resume: () => this.setPaused(false), restart: () => this.restart(),
       menu: () => this.menu(), pause: () => this.setPaused(true), mute: () => this.toggleMute(),
       fullscreen: () => { void this.fullscreen(); }, preferences: value => this.savePreferences(value),
+      vehicle: value => this.selectVehicle(value),
       landscape: () => this.openLandscape(),
       controller: () => { this.setPaused(true); this.controllerPanel.show(); },
       result: () => this.continueResult(), pilot: value => this.records.setPilot(value),
       records: () => { this.setPaused(true); this.saveRecord(); this.recordsPanel.show(); },
-    }, this.preferences, this.records.pilot);
+    }, this.preferences, this.records.pilot, this.selectedVehicle);
     this.ui.setLandscapeTheme(resolveLandscape(this.landscapePreferences, this.simulation.state.wave, this.simulation.state.seed).style);
     this.controllerPanel = new ControllerPanel(root, this.input.controller, () => { this.input.clear(); });
     this.landscapePanel = new LandscapePanel(root, this.landscapePreferences,
@@ -94,7 +103,8 @@ export class GameApp {
       () => this.simulation.state.seed);
     this.recordsPanel = new RecordsPanel(root, this.records, () => { this.input.clear(); },
       () => ({ spawnMode: this.preferences.spawnMode, missionMode: this.preferences.missionMode,
-        rescueProtocol: this.run?.rescueProtocol ?? this.preferences.rescueProtocol }));
+        rescueProtocol: this.run?.rescueProtocol ?? this.preferences.rescueProtocol,
+        vehicleId: this.run?.vehicleId ?? this.selectedVehicle }));
     this.audio.setMuted(this.preferences.muted);
     this.audio.setVolume(this.preferences.volume);
     this.audio.setEnginePitch(this.preferences.enginePitchHz);
@@ -153,7 +163,7 @@ export class GameApp {
     if (teleport) { this.lastTeleport = teleport.id; this.graphics.reset(state, false); }
     if (state.enabled && state.outcome !== 'active' && this.mode === 'playing') {
       this.saveRecord();
-      const rank = this.run ? this.records.list(this.run?.spawnMode, this.run?.missionMode, this.run?.rescueProtocol).findIndex(record => record.id === this.run!.id) + 1 : 0;
+      const rank = this.run ? this.records.list(this.run?.spawnMode, this.run?.missionMode, this.run?.rescueProtocol, this.run?.vehicleId).findIndex(record => record.id === this.run!.id) + 1 : 0;
       this.ui.recordStatus(this.run && state.score === 0 ? 'Sin puntos registrados. ¡Inténtalo otra vez!' : this.run
         ? `${this.run.pilot} · ${rank ? `Puesto ${rank}/10 · ${this.records.persistent ? 'Guardado' : 'Solo esta sesión'}` : 'Fuera del top 10'} · ${DIFFICULTIES[this.run.difficulty].label} (mínima usada)`
         : 'Práctica de diagnóstico · no registra récords');
@@ -189,11 +199,11 @@ export class GameApp {
     this.saveRecord();
     this.run = { id: crypto.randomUUID(), pilot: this.records.pilot, difficulty: this.preferences.difficulty,
       missionMode: this.preferences.missionMode, spawnMode: this.preferences.spawnMode,
-      rescueProtocol: this.preferences.rescueProtocol, date: new Date().toISOString() };
+      rescueProtocol: this.preferences.rescueProtocol, vehicleId: this.selectedVehicle, date: new Date().toISOString() };
     this.unlockAudio();
     this.simulation = new Simulation(this.simulation.state.seed,
       this.preferences.spawnMode === 'dynamic' ? 'dynamic-basic' : 'combat-basic',
-      this.preferences.difficulty, this.preferences.missionMode, this.preferences.spawnMode, this.preferences.rescueProtocol);
+      this.preferences.difficulty, this.preferences.missionMode, this.preferences.spawnMode, this.preferences.rescueProtocol, this.selectedVehicle);
     this.audio.resetEvents(); this.lastTeleport = 0;
     this.graphics.reset(this.simulation.state, false);
     this.setMode('playing');
@@ -201,7 +211,7 @@ export class GameApp {
 
   restart(): void {
     if (this.simulation.state.enabled) { this.start(); return; }
-    this.simulation = new Simulation(this.simulation.state.seed, this.simulation.state.enabled ? (this.preferences.spawnMode === 'dynamic' ? 'dynamic-basic' : 'combat-basic') : 'flight-basic', this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol);
+    this.simulation = new Simulation(this.simulation.state.seed, this.simulation.state.enabled ? (this.preferences.spawnMode === 'dynamic' ? 'dynamic-basic' : 'combat-basic') : 'flight-basic', this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol, this.selectedVehicle);
     this.audio.resetEvents(); this.lastTeleport = 0;
     this.graphics.reset(this.simulation.state, false);
     this.setMode('playing');
@@ -209,7 +219,7 @@ export class GameApp {
 
   menu(): void {
     this.saveRecord(); this.run = null;
-    this.simulation = new Simulation(this.simulation.state.seed, 'flight-basic', this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol);
+    this.simulation = new Simulation(this.simulation.state.seed, 'flight-basic', this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol, this.selectedVehicle);
     this.audio.resetEvents(); this.lastTeleport = 0;
     this.graphics.reset(this.simulation.state, true);
     this.setMode('title');
@@ -219,6 +229,17 @@ export class GameApp {
     if (this.mode !== 'playing' && this.mode !== 'paused') return;
     this.setMode(value ? 'paused' : 'playing');
     if (!value) this.unlockAudio();
+  }
+
+  private selectVehicle(selected: VehicleId): void {
+    // Vehicle choice is immutable for an active run and its leaderboard.
+    if (this.mode !== 'title') return;
+    const vehicle = vehicleProfile(selected).id;
+    this.selectedVehicle = vehicle;
+    try { localStorage.setItem(VEHICLE_SETTINGS_KEY, vehicle); } catch { /* Session-only selection. */ }
+    this.simulation = new Simulation(this.simulation.state.seed, 'flight-basic',
+      this.preferences.difficulty, this.preferences.missionMode, 'classic', this.preferences.rescueProtocol, vehicle);
+    this.graphics.reset(this.simulation.state, true);
   }
 
   private toggleMute(): void {
