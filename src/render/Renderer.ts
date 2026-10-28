@@ -9,7 +9,7 @@ import type { VehicleId } from '../game/VehicleProfile';
 import type { FlightState } from '../game/Simulation';
 import { CameraRig } from './CameraRig';
 import { createShip } from './models/Ship';
-import { animateHelicopter, createHelicopter } from './models/Helicopter';
+import { animateHelicopter, createHelicopter, HELICOPTER_GAME_SCALE } from './models/Helicopter';
 import type { HelicopterModel } from './models/Helicopter';
 import { emission } from './materials';
 import { WorldScene } from './WorldScene';
@@ -178,9 +178,9 @@ export class FlightRenderer {
     const scale = title ? 2.1 : 1;
     if (helicopter) {
       helicopter.group.position.set(x, y, 0);
-      // Bigger utility-helicopter silhouette: large enough to read from the
-      // side-view camera, with landing wheels above the ground clearance.
-      const helicopterScale = scale * 1.18;
+      // Match the classic ship's on-screen footprint while preserving the
+      // accepted utility-helicopter model, rotors and control animations.
+      const helicopterScale = scale * HELICOPTER_GAME_SCALE;
       helicopter.group.scale.set(helicopterScale * p.facing, helicopterScale, helicopterScale);
       helicopter.group.rotation.y = 0;
       // Keep the ORIGINAL up/down animation on X: invert only its direction.
