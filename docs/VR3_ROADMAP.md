@@ -160,6 +160,14 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [ ] **Siguiente entrega:** seleccionar vehículo antes de jugar, adaptación de recogida/rescate, arma/sonido y balance. No exponer helicóptero en la UI hasta completar y verificar esos contratos, accesibilidad y récords.
 - [ ] **Decisión de producto pendiente de confirmar:** variantes elegibles dentro del mismo juego (propuesta preferida para reutilizar reglas) frente a modos/episodios separados. El incremento técnico es compatible con ambas y no impone la decisión.
 
+**Tercer incremento — rediseño por revisión visual del usuario (27/10/2026):**
+- [x] **Problemas confirmados en el prototipo:** el usuario vio el helicóptero en el escenario de diagnóstico y describió una apariencia pequeña «como de juguete», velocidad excesivamente baja y una restricción artificial que impedía acercarse al suelo.
+- [x] **Diagnóstico:** la geometría anterior utilizaba un fuselaje ovoide de pequeño tamaño con patines; el perfil horizontal `acceleration=64` y `drag=2.4` producía una velocidad sostenida cercana a 27 unidades/s pese al tope de 48. En `flight-basic` la nave y el helicóptero estaban limitados por `CONFIG.minAltitude=26`, aunque el terreno normalmente está alrededor de y=10.
+- [x] **Modelo rediseñado en la rama:** fuselaje facetado de helicóptero utilitario inspirado en la silueta de un Black Hawk (sin activo externo ni insignias militares), parabrisas inclinado, puerta lateral, dos turbinas, cola larga con aleta, rotores principal y de cola, dos ruedas de aterrizaje y mayor escala de renderizado (1.18× en juego). El modelo anterior no se conserva como alternativa.
+- [x] **Vuelo experimental corregido:** helicóptero con `acceleration=175`, `drag=1.7`, `maxSpeed=90`, `verticalSpeed=42`, `verticalResponse=9`. `groundClearance=3.8` hace que su centro pueda descender hasta `terrain.height(x)+3.8` tanto en reconocimiento como en combate; impide hundir las ruedas en la topografía de la posición central. **La nave clásica no cambia**: conserva el límite `CONFIG.minAltitude` en reconocimiento y la altura del terreno en combate.
+- [x] **Pruebas nuevas o adaptadas (sin ejecutar):** cobertura unitaria de aceleración, altura mínima en reconocimiento, separación durante vuelo rápido/costura, ruedas y turbinas, y E2E de velocidad y descenso en ambos backends. Las pruebas generales anteriores corresponden a una revisión diferente.
+- [ ] **Validación requerida del rediseño:** `npm run build`, `npx vitest run tests/unit/vehicle-profiles.test.ts tests/unit/helicopter-model.test.ts` y `npx playwright test tests/e2e/vehicle-visual.spec.ts` (**10 unitarias y 6 E2E previstas**, no resultados). Revisar visualmente dimensiones, ruedas y facilidad de descenso; no integrar `main` todavía.
+
 **Criterios de aceptación originales de la fase 4 (siguen vigentes):**
 
 - Un contrato común de vehículo (modelo visual, movimiento, armas, capacidad, sonido, acciones).
