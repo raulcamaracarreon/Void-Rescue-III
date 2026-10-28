@@ -228,7 +228,7 @@ El archivo unitario ahora contiene **6 pruebas** y el E2E visual **3 escenarios 
 
 Primera validación tras el cambio de cabeceo: **build aprobado**, `tests/e2e/vehicle-visual.spec.ts` **6/6 aprobadas (14.4 s)**, `tests/unit/helicopter-model.test.ts` **4/6 aprobadas**. Ambas fallas unitarias se deben únicamente al valor numérico JavaScript `-0` frente a `+0` cuando la inclinación es cero. No son fallas del giro del rotor, física, audio ni Playwright. El usuario también menciona una aparente anomalía de pantalla sin traza de error específica; si persiste en el juego en ejecución habrá que diagnosticarla por separado.
 
-Corrección en GitHub: `helicopterAttitude` normaliza ambos componentes a `+0` cuando son cero; se añadieron expectativas explícitas para dirección izquierda/derecha. **Todavía no se ejecutó la nueva prueba localmente**; validar únicamente las dos afectadas:
+Corrección en GitHub: `helicopterAttitude` normaliza ambos componentes a `+0` cuando son cero; se añadieron expectativas explícitas para dirección izquierda/derecha. **El usuario ya ejecutó satisfactoriamente la validación focalizada** (27/10/2026, 21:21): **2 aprobadas, 4 omitidas por filtro, 199 ms**. Comando de referencia (ya ejecutado):
 
 ```powershell
 cd "E:\Proyectos\JUEGOS\VoidRescue-III"
@@ -237,4 +237,4 @@ git merge --ff-only origin/feat/phase4-vehicle-profiles
 npx vitest run tests/unit/helicopter-model.test.ts -t "inclina el morro|limita la inclinación"
 ```
 
-Resultado esperado **2 aprobadas / 4 omitidas**; no reejecutar Playwright ni build solo por esta normalización. El código de la nave clásica y `AudioEngine.ts` no se modifican. La rama sigue separada de `main`.
+Resultado real: **2 aprobadas / 4 omitidas**. No se reejecutaron la compilación ni Playwright después del ajuste numérico; ambos ya habían aprobado en la revisión anterior. No es necesario repetirlos sin otros cambios funcionales. El código de la nave clásica y `AudioEngine.ts` no se modifican. Queda pendiente únicamente la inspección manual del cabeceo arriba/abajo en ambos sentidos y confirmar si la anomalía visual mencionada anteriormente persiste. La rama sigue separada de `main`.
