@@ -1,6 +1,8 @@
 import type { GameEvent } from '../game/combat/types';
 import { signedWrappedDeltaX } from '../core/WorldWrap';
 import { CONFIG } from '../game/config';
+import type { VehicleId } from '../game/VehicleProfile';
+import { HelicopterSound } from './HelicopterSound';
 import { CombatSound, masterBus } from './CombatSound';
 
 /** Frequency selected on the settings slider is the whine at full speed and thrust. */
@@ -28,6 +30,8 @@ export class AudioEngine {
   private engine: OscillatorNode | null = null;
   private engineWhine: OscillatorNode | null = null;
   private engineWhineGain: GainNode | null = null;
+  private helicopterSound: HelicopterSound | null = null;
+  private currentVehicle: VehicleId = 'ship';
   muted = false;
   volume = 0.45;
   private enginePitchHz = ENGINE_PITCH_DEFAULT;
@@ -71,15 +75,23 @@ export class AudioEngine {
 
   setEnginePitch(value: number): void { this.enginePitchHz = normalizeEnginePitch(value); }
 
-  update(thrust: number, speed: number, active: boolean): void {
-    if (!this.context || !this.engine || !this.engineGain || !this.engineWhine || !this.engineWhineGain) return;
+  update(thrust: number, speed: number, active: boolean, vehicle: VehicleId = 'ship'): void {
+    this.currentVehicle = vehicle;
+    if (!this.context || !this.master || !this.engine || !this.engineGain || !this.engineWhine || !this.engineWhineGain) return;
     const now = this.context.currentTime;
-    // The slider controls the whine at maximum speed/thrust; the tone continues
-    // to change smoothly as the ship accelerates or decelerates.
+    const shipActive = active && vehicle === 'ship';
+    // Preserve the original spacecraft frequencies and thrust response exactly.
     this.engine.frequency.setTargetAtTime(48 + speed * 0.18 + thrust * 18, now, 0.06);
     this.engineWhine.frequency.setTargetAtTime(engineWhineFrequency(speed, thrust, this.enginePitchHz), now, 0.045);
-    this.engineGain.gain.setTargetAtTime(active ? 0.012 + thrust * 0.032 : 0, now, 0.06);
-    this.engineWhineGain.gain.setTargetAtTime(active ? 0.006 + thrust * 0.034 : 0, now, 0.045);
+    this.engineGain.gain.setTargetAtTime(shipActive ? 0.012 + thrust * 0.032 : 0, now, 0.06);
+    this.engineWhineGain.gain.setTargetAtTime(shipActive ? 0.006 + thrust * 0.034 : 0, now, 0.045);
+
+    // The alternative synth starts only when the helicopter is selected.
+    // Both vehicles use the existing master bus, mute and volume settings.
+    if (vehicle === 'helicopter' && !this.helicopterSound) {
+      this.helicopterSound = new HelicopterSound(this.context, this.master);
+    }
+    this.helicopterSound?.update(thrust, speed, active && vehicle === 'helicopter');
   }
 
   pulse(): void {
@@ -123,9 +135,16 @@ export class AudioEngine {
     }
   }
 
-  getState(): { initialized: boolean; state: string; muted: boolean; volume: number; enginePitchHz: number } {
-    return { initialized: this.context !== null, state: this.context?.state ?? 'locked', muted: this.muted, volume: this.volume, enginePitchHz: this.enginePitchHz };
+  getState(): { initialized: boolean; state: string; muted: boolean; volume: number; enginePitchHz: number;
+    vehicle: VehicleId; helicopterSoundInitialized: boolean } {
+    return { initialized: this.context !== null, state: this.context?.state ?? 'locked',
+      muted: this.muted, volume: this.volume, enginePitchHz: this.enginePitchHz,
+      vehicle: this.currentVehicle, helicopterSoundInitialized: this.helicopterSound !== null };
   }
 
-  dispose(): void { this.engine?.stop(); this.engineWhine?.stop(); void this.context?.close(); }
+  dispose(): void {
+    this.helicopterSound?.dispose();
+    this.engine?.stop(); this.engineWhine?.stop();
+    void this.context?.close();
+  }
 }
