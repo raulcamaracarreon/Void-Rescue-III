@@ -160,7 +160,7 @@ export class GameApp {
       this.setMode('result');
     }
     this.audio.events(state.events, state.player.x);
-    this.audio.update(state.player.thrust, Math.abs(state.player.vx), this.mode === 'playing' && state.player.alive);
+    this.audio.update(state.player.thrust, Math.abs(state.player.vx), this.mode === 'playing' && state.player.alive, state.vehicleId);
     try {
       this.graphics.draw(state, alpha, elapsed, this.mode === 'playing', this.mode === 'title', this.preferences.reducedMotion);
       this.ui.update(state, this.graphics.metrics(), this.input.gamepadConnected, this.preferences.difficulty, this.input.controller.labels());
