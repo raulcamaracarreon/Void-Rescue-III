@@ -94,9 +94,12 @@ export class Simulation {
     const unwrapped = p.x + p.vx * dt;
     if (unwrapped < 0 || unwrapped >= CONFIG.worldWidth) s.laps++;
     p.x = wrapX(unwrapped, CONFIG.worldWidth);
-    // Combat flight can descend to the terrain itself.  This makes the ground
-    // colonists physically reachable (and, deliberately, vulnerable to fire).
-    const floor = s.enabled ? this.context.terrain.height(p.x) : CONFIG.minAltitude;
+    // Only helicopters use ground-following clearance in reconnaissance as
+    // well as combat. The original ship keeps BOTH historical altitude rules.
+    // Keep clearance between the helicopter's center and its landing wheels.
+    const floor = s.vehicleId === 'helicopter'
+      ? this.context.terrain.height(p.x) + flight.groundClearance
+      : s.enabled ? this.context.terrain.height(p.x) : CONFIG.minAltitude;
     p.y = Math.max(floor, Math.min(CONFIG.maxAltitude, p.y + p.vy * dt));
     if ((p.y === floor && p.vy < 0) || (p.y === CONFIG.maxAltitude && p.vy > 0)) p.vy = 0;
     s.distance += Math.abs(p.vx * dt);
