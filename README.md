@@ -115,3 +115,8 @@ Tras la aceptación visual de apariencia, velocidad y animación (inversión pun
 ### Fase 4 — reducción proporcional del helicóptero (27/10/2026)
 
 El usuario aprobó el sonido propio de rotor/turbina. Para conservar la proporción y la dificultad perceptiva del juego clásico, se redujo la escala visual del helicóptero de `1.18` a `0.56`, conservando su modelo angular, animaciones y sonido. Se ajustó la separación del suelo a `terrain + 2.0` para que las ruedas no floten. No se alteraron física horizontal, hitboxes, armas, dificultad ni la nave original. **Pendiente:** compilación, 11 pruebas unitarias y 8 E2E del vuelo visual, más revisión manual de proporción.
+
+
+### Fase 4 — selector y rescate operativo por vehículo (27/10/2026)
+
+La pantalla inicial ahora permite elegir nave clásica (predeterminada) o helicóptero de rescate, con persistencia y representación visual propia. La nave mantiene su recogida y capacidad heredadas; el helicóptero lleva **hasta dos colonos**, exige vuelo bajo y lento para recoger con E/Y, los incorpora a cabina y entrega en Fortaleza 01 (misión Rescatista). Se utiliza el mismo sistema de oleadas/colisiones/puntuación y un cable visual específico. Los récords se agrupan por vehículo y los antiguos se interpretan como nave. Animación, escala y sonido ya aceptados permanecen intactos. **Validación pendiente: build, 16 unitarias y 12 E2E focalizadas**. Los cambios siguen aislados en `feat/phase4-vehicle-profiles`, sin merge ni despliegue.
