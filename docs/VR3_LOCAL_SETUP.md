@@ -222,3 +222,19 @@ npx playwright test tests/e2e/vehicle-visual.spec.ts
 ```
 
 El archivo unitario ahora contiene **6 pruebas** y el E2E visual **3 escenarios × 2 backends = 6 ejecuciones**. No hay resultados locales aún. Después de `npm run dev`, cargar `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')`, subir/bajar y cambiar el sentido del helicóptero; su morro debe elevarse al ascender y bajar al descender, en ambos sentidos. No habilitar vehículos clasificados ni fusionar la rama sin autorización.
+
+
+## Fase 4 — corrección de dos unitarias por cero con signo (27/10/2026)
+
+Primera validación tras el cambio de cabeceo: **build aprobado**, `tests/e2e/vehicle-visual.spec.ts` **6/6 aprobadas (14.4 s)**, `tests/unit/helicopter-model.test.ts` **4/6 aprobadas**. Ambas fallas unitarias se deben únicamente al valor numérico JavaScript `-0` frente a `+0` cuando la inclinación es cero. No son fallas del giro del rotor, física, audio ni Playwright. El usuario también menciona una aparente anomalía de pantalla sin traza de error específica; si persiste en el juego en ejecución habrá que diagnosticarla por separado.
+
+Corrección en GitHub: `helicopterAttitude` normaliza ambos componentes a `+0` cuando son cero; se añadieron expectativas explícitas para dirección izquierda/derecha. **Todavía no se ejecutó la nueva prueba localmente**; validar únicamente las dos afectadas:
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npx vitest run tests/unit/helicopter-model.test.ts -t "inclina el morro|limita la inclinación"
+```
+
+Resultado esperado **2 aprobadas / 4 omitidas**; no reejecutar Playwright ni build solo por esta normalización. El código de la nave clásica y `AudioEngine.ts` no se modifican. La rama sigue separada de `main`.
