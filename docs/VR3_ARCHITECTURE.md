@@ -111,3 +111,12 @@ Orden visual de controles: biblioteca → rotación de ambientes → editor de f
 El helicóptero **solo es una propuesta de dinámica simulable en pruebas unitarias**. No existe todavía modelo 3D, HUD de selección, sonidos específicos, mecánica diferenciada de rescate ni compatibilidad jugable demostrada; el jugador sigue viendo y controlando la nave predeterminada. No introducirlo como opción visible antes de integrar y probar la representación coherente. Los sistemas de rescate/oleadas y colisiones todavía no diferencian vehículos; la fase 4 debe abstraerlos de manera incremental y conservar la nave como referencia. La decisión variantes dentro de un juego frente a episodios independientes permanece abierta.
 
 **Pruebas incorporadas pero aún no ejecutadas localmente:** `tests/unit/vehicle-profiles.test.ts` y regresión `core.test.ts`. Compilación y E2E de vuelo pendientes.
+
+
+## Fase 4 — incremento 2: helicóptero 3D experimental (27/10/2026)
+
+`src/render/models/Helicopter.ts` crea un helicóptero 2.5D de geometría Three.js: fuselaje, cabina, puerta lateral, rotor principal horizontal (grupo independiente con giro Y), rotor de cola (giro Z), patines y detalles de rescate. `animateHelicopter` limita el avance por fotograma y respeta `reducedMotion`. No cambia la física ni crea colisiones nuevas. `FlightRenderer` carga el modelo **de manera diferida** solo al seleccionar `vehicleId: 'helicopter'` en el estado de la simulación, posiciona/orienta el modelo elegido en el mundo circular y oculta la nave clásica durante su uso. `reset` restaura rotor y visibilidad sin mostrar ambos modelos.
+
+El acceso experimental se limita a la API diagnóstica DEV: `window.__VOID_RESCUE__.loadScenario('flight-basic', seed, 'helicopter')`. El menú normal sigue creando `Simulation` con vehículo `ship`; no se permite selección por jugadores ni se registran puntuaciones clasificadas en el diagnóstico. `FlightRenderer.metrics()` diferencia identidad de perfil (`vehicleId`) y modelo realmente visible (`renderedModel`). La API pública de partida, entrada y guardado permanece intacta.
+
+Pruebas codificadas y **pendientes de ejecución local**: `tests/unit/helicopter-model.test.ts` (3 escenarios), `tests/e2e/vehicle-visual.spec.ts` (2 escenarios por backend), además de regresión `tests/e2e/flight.spec.ts`. El próximo incremento de producto requiere contrato de rescate/armas, modelos comparables, selección previa a partida y revisión visual.
