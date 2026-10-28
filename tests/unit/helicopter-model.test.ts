@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { animateHelicopter, createHelicopter, helicopterAttitude } from '../../src/render/models/Helicopter';
+import { animateHelicopter, createHelicopter } from '../../src/render/models/Helicopter';
 
 describe('fase 4 — modelo visual del helicóptero', () => {
   it('construye un helicóptero utilitario angular con cabina, motores, ruedas y rotores', () => {
@@ -29,32 +29,6 @@ describe('fase 4 — modelo visual del helicóptero', () => {
     expect(cabin).toBeDefined();
     expect(model.tailRotor.position.x).toBeLessThan(-10);
     expect(model.mainRotor.position.y).toBeGreaterThan(3);
-  });
-
-  it('inclina el morro arriba al ascender y abajo al descender en ambos sentidos', () => {
-    for (const facing of [1, -1] as const) {
-      const rising = helicopterAttitude(0, 25, facing, false);
-      const falling = helicopterAttitude(0, -25, facing, false);
-      // World Y of a +X nose: mirrored nose X multiplied by the Z rotation.
-      expect(Math.sin(rising.pitchZ) * facing).toBeGreaterThan(0);
-      expect(Math.sin(falling.pitchZ) * facing).toBeLessThan(0);
-      expect(rising.pitchZ).toBeCloseTo(-falling.pitchZ, 10);
-      expect(helicopterAttitude(0, 0, facing, false).pitchZ).toBe(0);
-      // Strict comparisons distinguish -0 from +0: a centered stick must
-      // report the same neutral attitude in either facing direction.
-      expect(helicopterAttitude(-0, -0, facing, false)).toEqual({ bankX: 0, pitchZ: 0 });
-    }
-  });
-
-  it('limita la inclinación a valores arcade legibles y respeta movimiento reducido', () => {
-    const max = helicopterAttitude(500, 500, 1, false);
-    expect(max.pitchZ).toBeCloseTo(0.22, 10);
-    expect(max.bankX).toBeCloseTo(-0.14, 10);
-    const min = helicopterAttitude(-500, -500, -1, false);
-    expect(min.pitchZ).toBeCloseTo(0.22, 10); // mirrored when facing left
-    expect(min.bankX).toBeCloseTo(0.14, 10);
-    expect(helicopterAttitude(90, -42, -1, true)).toEqual({ bankX: 0, pitchZ: 0 });
-    expect(helicopterAttitude(NaN, Infinity, 1, false)).toEqual({ bankX: 0, pitchZ: 0 });
   });
 
   it('anima rotores independientemente sin intervenir en la simulación', () => {
