@@ -228,3 +228,28 @@ npm run dev
 ```
 
 El archivo de modelo contiene **4 pruebas** (no 6). Con `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')`, verificar que **las mismas inclinaciones de antes** responden al revés a W/S o arriba/abajo. No repetir E2E por una inversión local del signo, salvo síntoma nuevo. Esperar confirmación visual, sin fusionar `main`.
+
+
+## Fase 4 — prueba focalizada de sonido de helicóptero (27/10/2026)
+
+El usuario aceptó la inversión puntual de arriba/abajo: **no cambiar la animación de nuevo**. El nuevo asunto es distinto: motor del helicóptero idéntico al zumbido de nave. El audio del helicóptero ya tiene dos capas procedurales nuevas (rotor pulsante y turbina) que entran por `vehicleId`, con pausa, volumen y silencio en el bus compartido. Se preservó el perfil sonoro de la nave.
+
+En la rama `feat/phase4-vehicle-profiles`, ejecutar únicamente las pruebas relevantes a audio:
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/helicopter-sound.test.ts tests/unit/engine-pitch.test.ts
+npx playwright test tests/e2e/vehicle-visual.spec.ts tests/e2e/engine-pitch.spec.ts
+npm run dev
+```
+
+Esperados **8 unitarias y 10 E2E** (cada una de las 5 pruebas E2E se ejecuta en Chromium automático y WebGL2). Estos no son resultados. Para oírlo, **primero pulsar INICIAR VUELO en el juego** (habilita AudioContext por interacción del navegador) y luego, en la consola de DevTools, ejecutar:
+
+```javascript
+window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')
+```
+
+Comprobar pulsación de palas más grave y grave de turbina, volumen/silencio y pausa; al volver a `'ship'` debe regresar exactamente el motor sonoro de la nave. No usar el menú de selección de vehículos (todavía no existe) ni fusionar a `main` sin autorización. Si no suena desde una sesión nueva de consola, comprobar primero que el usuario inició vuelo mediante clic real, antes de diagnosticar un fallo del sintetizador.
