@@ -185,3 +185,22 @@ npx playwright test tests/e2e/vehicle-visual.spec.ts tests/e2e/flight.spec.ts
 ```
 
 Se esperan **7 pruebas unitarias** (3 de modelo + 4 perfiles) y **16 E2E** (4 nuevas de vehículo visual más 12 de vuelo en ambos backends). Las cifras son previstas, **no resultados**. La comprobación visual manual debe abrir `npm run dev`, usar herramientas de diagnóstico solo en modo desarrollo y corroborar que el modelo parece helicóptero, que los rotores giran y que la nave clásica reaparece al cargar un escenario sin seleccionar vehículo. No usar `main` para estas pruebas; no ejecutar GitHub Actions ni publicar.
+
+
+## Fase 4 — rediseño solicitado tras primera prueba visual (27/10/2026)
+
+El usuario comprobó el primer helicóptero con `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')` y detectó tres problemas: aspecto de juguete, lentitud y altura mínima demasiado elevada. El **tercer incremento** ya está corregido en `feat/phase4-vehicle-profiles`: geometría utilitaria angular semejante a un helicóptero de rescate tipo Black Hawk, con ventanas, turbinas, tren de ruedas y mayor escala; velocidad tope 90 y ascenso/descenso ágil; suelo del helicóptero `Terrain.height(x)+3.8` incluso en `flight-basic`. La nave clásica no cambia.
+
+**No se han ejecutado pruebas contra este rediseño.** Ejecutar únicamente:
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/vehicle-profiles.test.ts tests/unit/helicopter-model.test.ts
+npx playwright test tests/e2e/vehicle-visual.spec.ts
+npm run dev
+```
+
+Vitest debe encontrar **10 casos** (6 perfiles + 4 modelos) y Playwright **6** (3 escenarios × 2 backends). Los números son expectativas, no aprobaciones. En el navegador DEV, usar la API diagnóstica existente para cargar `loadScenario('flight-basic', 8042, 'helicopter')`, volar manteniendo D/A, y bajar manteniendo S: las ruedas deben acercarse al terreno; la velocidad debe superar la de la nave normal. Validar silueta, tamaño y rotores también en pantalla real. `main` y el sistema de récords permanecen intactos; no ejecutar CI ni fusionar sin nueva aprobación.
