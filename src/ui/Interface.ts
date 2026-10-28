@@ -141,9 +141,14 @@ export class Interface {
     vehicleSelect.value = selectedVehicle;
     const vehicleHelp = get<HTMLElement>('.vehicle-help');
     const updateVehicleHelp = () => {
-      vehicleHelp.textContent = vehicleSelect.value === 'helicopter'
+      const helicopter = vehicleSelect.value === 'helicopter';
+      vehicleHelp.textContent = helicopter
         ? 'Helicóptero: 2 pasajeros · descenso próximo al terreno · mantén E/Y para recoger a baja velocidad'
         : 'Nave clásica: extracción habitual · capacidad sin límite · mismo control de vuelo';
+      this.root.querySelector<HTMLElement>('.ship-caption p')!.innerHTML = helicopter
+        ? 'HC—02 <b>GUARDIÁN</b>' : 'VR—01 <b>RESPONDER</b>';
+      this.root.querySelector<HTMLElement>('.ship-caption small')!.textContent = helicopter
+        ? 'HELICÓPTERO DE RESCATE' : 'NAVE DE RESPUESTA RÁPIDA';
     };
     updateVehicleHelp();
     vehicleSelect.addEventListener('change', () => {
@@ -272,6 +277,8 @@ export class Interface {
 
   update(state: FlightState, metrics: RenderMetrics, gamepad: boolean, difficulty: Difficulty = 'normal', padLabels?: readonly (readonly [string, string])[]): void {
     this.hud.classList.toggle('combat', state.enabled);
+    this.root.querySelector<HTMLElement>('.hud-identity small')!.textContent =
+      state.vehicleId === 'helicopter' ? 'HC—02 / GUARDIÁN' : 'VR—01 / RESPONDER';
     this.speed.textContent = String(Math.round(Math.abs(state.player.vx))).padStart(3, '0');
     this.altitude.textContent = String(Math.round(state.player.y)).padStart(3, '0');
     this.coordinate.textContent = String(Math.floor(state.player.x)).padStart(4, '0');
