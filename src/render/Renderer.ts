@@ -35,6 +35,8 @@ export interface RenderMetrics {
   drawCalls: number; triangles: number; geometries: number; textures: number;
   width: number; height: number; pixelRatio: number; cameraX: number; viewWidth: number;
   vehicleId: VehicleId;
+  /** Actual visible scene model, to diagnose 3D/profile mismatches. */
+  renderedModel: VehicleId;
 }
 
 export class FlightRenderer {
@@ -230,7 +232,8 @@ export class FlightRenderer {
       drawCalls: info.render.drawCalls, triangles: info.render.triangles,
       geometries: info.memory.geometries, textures: info.memory.textures,
       width: this.width, height: this.height, pixelRatio: this.renderer.getPixelRatio(),
-      cameraX: this.rig.x, viewWidth: this.viewWidth, vehicleId: this.currentVehicle };
+      cameraX: this.rig.x, viewWidth: this.viewWidth, vehicleId: this.currentVehicle,
+      renderedModel: this.helicopter?.group.visible ? 'helicopter' : 'ship' };
   }
 
   dispose(): void {
