@@ -22,6 +22,17 @@ export interface VehicleProfile {
     readonly projectileSpeed: number;
     readonly muzzleOffset: number;
   };
+  /** Explicit passenger/boarding rules. null means the classic ship remains unlimited. */
+  readonly rescue: {
+    readonly capacity: number | null;
+    readonly pickupRange: number;
+    readonly minPickupHeight: number;
+    readonly maxPickupHeight: number;
+    readonly maxPickupSpeed: number | null;
+    readonly extractionSpeed: number;
+    readonly extractionHorizontalSpeed: number;
+    readonly deliverySpeed: number;
+  };
 }
 
 /** The legacy ship must reproduce VR2/VR3 movement and projectile speeds
@@ -39,6 +50,8 @@ export const SHIP_PROFILE: VehicleProfile = {
     groundClearance: 0, // legacy flight keeps its historical altitude floor
   },
   weapon: { projectileSpeed: CONFIG.shotSpeed, muzzleOffset: 5 },
+  rescue: { capacity: null, pickupRange: 8, minPickupHeight: 3, maxPickupHeight: 17,
+    maxPickupSpeed: null, extractionSpeed: 5.5, extractionHorizontalSpeed: 11, deliverySpeed: 22 },
 };
 
 /** More responsive arcade utility helicopter. At 175/1.7 horizontal thrust
@@ -58,6 +71,8 @@ export const HELICOPTER_PROFILE: VehicleProfile = {
     groundClearance: 2.0, // matches the smaller landing wheels (0.56 visual scale)
   },
   weapon: { projectileSpeed: 150, muzzleOffset: 5 },
+  rescue: { capacity: 2, pickupRange: 7, minPickupHeight: 0.5, maxPickupHeight: 11,
+    maxPickupSpeed: 20, extractionSpeed: 9, extractionHorizontalSpeed: 13, deliverySpeed: 15 },
 };
 
 export const VEHICLE_PROFILES: Readonly<Record<VehicleId, VehicleProfile>> = {
