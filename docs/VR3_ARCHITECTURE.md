@@ -120,3 +120,14 @@ El helicóptero **solo es una propuesta de dinámica simulable en pruebas unitar
 El acceso experimental se limita a la API diagnóstica DEV: `window.__VOID_RESCUE__.loadScenario('flight-basic', seed, 'helicopter')`. El menú normal sigue creando `Simulation` con vehículo `ship`; no se permite selección por jugadores ni se registran puntuaciones clasificadas en el diagnóstico. `FlightRenderer.metrics()` diferencia identidad de perfil (`vehicleId`) y modelo realmente visible (`renderedModel`). La API pública de partida, entrada y guardado permanece intacta.
 
 Pruebas codificadas y **pendientes de ejecución local**: `tests/unit/helicopter-model.test.ts` (3 escenarios), `tests/e2e/vehicle-visual.spec.ts` (2 escenarios por backend), además de regresión `tests/e2e/flight.spec.ts`. El próximo incremento de producto requiere contrato de rescate/armas, modelos comparables, selección previa a partida y revisión visual.
+
+
+## Fase 4 — corrección visual y física del helicóptero (27/10/2026)
+
+La validación visual del usuario mostró que el primer helicóptero experimental era demasiado pequeño/ovoide, lento y no podía bajar hasta el terreno en `flight-basic`. Las primeras pruebas de vuelo de la nave no detectaban estas diferencias porque comprobaban la ruta heredada.
+
+Se sustituyó el modelo de `models/Helicopter.ts` por un modelo 2.5D **utilitario facetado** (silueta inspirada en helicópteros tipo Black Hawk, con geometría propia): fuselaje angular en vez de esferas, cristales laterales y parabrisas inclinados, turbinas superiores, puerta deslizante, cola larga, rotor de cola y **ruedas** en lugar de patines. `Renderer.ts` aplica escala visual 1.18× solo al helicóptero; la nave de VR2 no se altera.
+
+`VehicleProfile.ts` añade `flight.groundClearance` y acelera el helicóptero (175 impulso horizontal, resistencia 1.7, límite de velocidad 90; 42 velocidad vertical, respuesta 9). `Simulation.ts` conserva la regla heredada de la nave y usa **solo para el helicóptero** el suelo dinámico `Terrain.height(x) + 3.8` en todo escenario: puede descender cerca de la topografía en reconocimiento sin atravesarla por su centro. La diferencia entre centro/ruedas se apoya en el nuevo modelo y la escala; sigue siendo un suelo arcade, sin colisión volumétrica con toda la silueta ni simulación aerodinámica completa.
+
+Pruebas específicas codificadas: `tests/unit/vehicle-profiles.test.ts` (6 casos), `tests/unit/helicopter-model.test.ts` (4) y `tests/e2e/vehicle-visual.spec.ts` (3 escenarios por backend). **No validadas localmente en esta versión**. Helicóptero sigue disponible solamente en diagnóstico DEV, no en partidas con récords.
