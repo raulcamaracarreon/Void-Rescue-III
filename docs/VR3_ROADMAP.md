@@ -168,6 +168,12 @@ Evolucionar Void Rescue II hacia un arcade de rescate 2.5D donde el usuario pued
 - [x] **Pruebas nuevas o adaptadas (sin ejecutar):** cobertura unitaria de aceleración, altura mínima en reconocimiento, separación durante vuelo rápido/costura, ruedas y turbinas, y E2E de velocidad y descenso en ambos backends. Las pruebas generales anteriores corresponden a una revisión diferente.
 - [ ] **Validación requerida del rediseño:** `npm run build`, `npx vitest run tests/unit/vehicle-profiles.test.ts tests/unit/helicopter-model.test.ts` y `npx playwright test tests/e2e/vehicle-visual.spec.ts` (**10 unitarias y 6 E2E previstas**, no resultados). Revisar visualmente dimensiones, ruedas y facilidad de descenso; no integrar `main` todavía.
 
+**Cuarto incremento — corrección de cabeceo, sonido confirmado (27/10/2026):**
+- [x] **Inspección manual:** el usuario acepta que el helicóptero tiene ahora mejor aspecto y velocidad, pero detecta que la inclinación visual al ascender/descender con las flechas estaba invertida. Posteriormente confirma que **sí se escucha sonido**; no intervenir `AudioEngine.ts`, ni introducir un motor propio por este reporte.
+- [x] **Corrección de orientación:** `helicopterAttitude(vx, vy, facing, reducedMotion)` proporciona un cabeceo alrededor del eje Z (silueta en el plano X/Y): velocidad vertical positiva => morro arriba; negativa => morro abajo. Invierte la señal visual según `facing` para que funcione mirando a izquierda o derecha, y mantiene el balanceo lateral discreto sobre X. Límite de inclinación ±0.22 rad; se respeta `reducedMotion`. La nave de VR2 no se modifica.
+- [x] **Dos unitarias nuevas:** sentido correcto de ascenso y descenso para ambas orientaciones, límites y movimiento reducido.
+- [ ] **Validación local pendiente de este parche:** compilar, ejecutar `npx vitest run tests/unit/helicopter-model.test.ts` (6 casos previstos) y `npx playwright test tests/e2e/vehicle-visual.spec.ts` (6 ejecuciones previstas en ambos backends). Confirmar visualmente W/S (o ↑/↓) al mirar a ambos lados. Estas son expectativas, no resultados. No fusionar a `main`.
+
 **Criterios de aceptación originales de la fase 4 (siguen vigentes):**
 
 - Un contrato común de vehículo (modelo visual, movimiento, armas, capacidad, sonido, acciones).
