@@ -206,11 +206,17 @@ npm run dev
 Vitest debe encontrar **10 casos** (6 perfiles + 4 modelos) y Playwright **6** (3 escenarios × 2 backends). Los números son expectativas, no aprobaciones. En el navegador DEV, usar la API diagnóstica existente para cargar `loadScenario('flight-basic', 8042, 'helicopter')`, volar manteniendo D/A, y bajar manteniendo S: las ruedas deben acercarse al terreno; la velocidad debe superar la de la nave normal. Validar silueta, tamaño y rotores también en pantalla real. `main` y el sistema de récords permanecen intactos; no ejecutar CI ni fusionar sin nueva aprobación.
 
 
-## Fase 4 — ajuste de cabeceo vertical; audio confirmado (27/10/2026)
+## Fase 4 — corrección puntual de la animación de subida y bajada (27/10/2026)
 
-El usuario indicó que la apariencia y velocidad del helicóptero rediseñado son mejores, pero que el cabeceo al pulsar arriba/abajo se veía invertido. También aclaró que el **sonido ya funciona**. No se modificó `AudioEngine.ts`: el audio WebAudio de la aplicación se habilita mediante la interacción del navegador y la queja inicial no requiere crear otro motor en esta revisión.
+**Petición exacta del usuario:** conservar las animaciones previas del helicóptero, e invertir exclusivamente el comportamiento al pulsar arriba/abajo. El intento previo cambió los ejes y tipos de inclinación, lo cual fue rechazado. No debe utilizarse su función `helicopterAttitude`; sus tests asociados también se retiraron. El usuario confirmó que el sonido ya funciona: **no modificar AudioEngine**.
 
-Se corrigió **solo el render del helicóptero**, incorporando `helicopterAttitude` y aplicando cabeceo Z con signo adecuado al ascender/descender y al mirar a izquierda/derecha; se mantienen movimiento reducido y comportamiento de la nave clásica.
+**Implementación vigente en `Renderer.ts`:**
+- Antes: `rotation.x = reducedMotion ? 0 : p.vy * 0.004`.
+- Ahora: `rotation.x = reducedMotion ? 0 : -p.vy * 0.004`. **Solo se invirtió el signo.**
+- Sin cambio: `rotation.z = reducedMotion ? 0 : -p.vx * 0.0015`.
+- Sin cambio: `rotation.y = 0`, escala/modelo del helicóptero, rotores, velocidad, límite al terreno, motor de sonido y nave clásica.
+
+La compilación y pruebas E2E anteriores correspondían a la **animación sustituta rechazada**, no a esta rectificación. Para este ajuste, confirmar únicamente compilación, modelo/rotores y evaluación visual real:
 
 ```powershell
 cd "E:\Proyectos\JUEGOS\VoidRescue-III"
@@ -218,23 +224,7 @@ git -c gc.auto=0 fetch origin
 git merge --ff-only origin/feat/phase4-vehicle-profiles
 npm run build
 npx vitest run tests/unit/helicopter-model.test.ts
-npx playwright test tests/e2e/vehicle-visual.spec.ts
+npm run dev
 ```
 
-El archivo unitario ahora contiene **6 pruebas** y el E2E visual **3 escenarios × 2 backends = 6 ejecuciones**. No hay resultados locales aún. Después de `npm run dev`, cargar `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')`, subir/bajar y cambiar el sentido del helicóptero; su morro debe elevarse al ascender y bajar al descender, en ambos sentidos. No habilitar vehículos clasificados ni fusionar la rama sin autorización.
-
-
-## Fase 4 — corrección de dos unitarias por cero con signo (27/10/2026)
-
-Primera validación tras el cambio de cabeceo: **build aprobado**, `tests/e2e/vehicle-visual.spec.ts` **6/6 aprobadas (14.4 s)**, `tests/unit/helicopter-model.test.ts` **4/6 aprobadas**. Ambas fallas unitarias se deben únicamente al valor numérico JavaScript `-0` frente a `+0` cuando la inclinación es cero. No son fallas del giro del rotor, física, audio ni Playwright. El usuario también menciona una aparente anomalía de pantalla sin traza de error específica; si persiste en el juego en ejecución habrá que diagnosticarla por separado.
-
-Corrección en GitHub: `helicopterAttitude` normaliza ambos componentes a `+0` cuando son cero; se añadieron expectativas explícitas para dirección izquierda/derecha. **El usuario ya ejecutó satisfactoriamente la validación focalizada** (27/10/2026, 21:21): **2 aprobadas, 4 omitidas por filtro, 199 ms**. Comando de referencia (ya ejecutado):
-
-```powershell
-cd "E:\Proyectos\JUEGOS\VoidRescue-III"
-git -c gc.auto=0 fetch origin
-git merge --ff-only origin/feat/phase4-vehicle-profiles
-npx vitest run tests/unit/helicopter-model.test.ts -t "inclina el morro|limita la inclinación"
-```
-
-Resultado real: **2 aprobadas / 4 omitidas**. No se reejecutaron la compilación ni Playwright después del ajuste numérico; ambos ya habían aprobado en la revisión anterior. No es necesario repetirlos sin otros cambios funcionales. El código de la nave clásica y `AudioEngine.ts` no se modifican. Queda pendiente únicamente la inspección manual del cabeceo arriba/abajo en ambos sentidos y confirmar si la anomalía visual mencionada anteriormente persiste. La rama sigue separada de `main`.
+El archivo de modelo contiene **4 pruebas** (no 6). Con `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')`, verificar que **las mismas inclinaciones de antes** responden al revés a W/S o arriba/abajo. No repetir E2E por una inversión local del signo, salvo síntoma nuevo. Esperar confirmación visual, sin fusionar `main`.
