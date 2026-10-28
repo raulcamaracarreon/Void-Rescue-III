@@ -14,12 +14,15 @@ test('el modelo del helicóptero se integra solo en modo diagnóstico y se puede
   }));
   expect(initial.state.vehicleId).toBe('ship');
   expect(initial.metrics.vehicleId).toBe('ship');
+  expect(initial.metrics.renderedModel).toBe('ship');
 
   await page.evaluate(() => window.__VOID_RESCUE__!.loadScenario('flight-basic', 304, 'helicopter'));
   await expect.poll(async () => page.evaluate(() =>
     window.__VOID_RESCUE__!.getState().vehicleId)).toBe('helicopter');
   await expect.poll(async () => page.evaluate(() =>
     window.__VOID_RESCUE__!.getMetrics().vehicleId)).toBe('helicopter');
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getMetrics().renderedModel)).toBe('helicopter');
   const start = await page.evaluate(() => window.__VOID_RESCUE__!.getState().player.x);
   await page.locator('#game').focus();
   await page.keyboard.down('KeyD');
@@ -31,6 +34,8 @@ test('el modelo del helicóptero se integra solo en modo diagnóstico y se puede
   expect(await page.evaluate(() => window.__VOID_RESCUE__!.getState().vehicleId)).toBe('ship');
   await expect.poll(async () => page.evaluate(() =>
     window.__VOID_RESCUE__!.getMetrics().vehicleId)).toBe('ship');
+  await expect.poll(async () => page.evaluate(() =>
+    window.__VOID_RESCUE__!.getMetrics().renderedModel)).toBe('ship');
 });
 
 test('el perfil experimental no se activa al iniciar partida normal ni acepta vehículos desconocidos', async ({ page }) => {
@@ -46,4 +51,5 @@ test('el perfil experimental no se activa al iniciar partida normal ni acepta ve
   await page.getByRole('button', { name: /INICIAR VUELO/ }).click();
   expect(await page.evaluate(() => window.__VOID_RESCUE__!.getState().vehicleId)).toBe('ship');
   expect(await page.evaluate(() => window.__VOID_RESCUE__!.getMetrics().vehicleId)).toBe('ship');
+  expect(await page.evaluate(() => window.__VOID_RESCUE__!.getMetrics().renderedModel)).toBe('ship');
 });
