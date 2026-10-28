@@ -40,6 +40,9 @@ describe('fase 4 — modelo visual del helicóptero', () => {
       expect(Math.sin(falling.pitchZ) * facing).toBeLessThan(0);
       expect(rising.pitchZ).toBeCloseTo(-falling.pitchZ, 10);
       expect(helicopterAttitude(0, 0, facing, false).pitchZ).toBe(0);
+      // Strict comparisons distinguish -0 from +0: a centered stick must
+      // report the same neutral attitude in either facing direction.
+      expect(helicopterAttitude(-0, -0, facing, false)).toEqual({ bankX: 0, pitchZ: 0 });
     }
   });
 
