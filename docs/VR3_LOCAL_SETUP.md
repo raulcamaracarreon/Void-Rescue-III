@@ -204,3 +204,21 @@ npm run dev
 ```
 
 Vitest debe encontrar **10 casos** (6 perfiles + 4 modelos) y Playwright **6** (3 escenarios × 2 backends). Los números son expectativas, no aprobaciones. En el navegador DEV, usar la API diagnóstica existente para cargar `loadScenario('flight-basic', 8042, 'helicopter')`, volar manteniendo D/A, y bajar manteniendo S: las ruedas deben acercarse al terreno; la velocidad debe superar la de la nave normal. Validar silueta, tamaño y rotores también en pantalla real. `main` y el sistema de récords permanecen intactos; no ejecutar CI ni fusionar sin nueva aprobación.
+
+
+## Fase 4 — ajuste de cabeceo vertical; audio confirmado (27/10/2026)
+
+El usuario indicó que la apariencia y velocidad del helicóptero rediseñado son mejores, pero que el cabeceo al pulsar arriba/abajo se veía invertido. También aclaró que el **sonido ya funciona**. No se modificó `AudioEngine.ts`: el audio WebAudio de la aplicación se habilita mediante la interacción del navegador y la queja inicial no requiere crear otro motor en esta revisión.
+
+Se corrigió **solo el render del helicóptero**, incorporando `helicopterAttitude` y aplicando cabeceo Z con signo adecuado al ascender/descender y al mirar a izquierda/derecha; se mantienen movimiento reducido y comportamiento de la nave clásica.
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/helicopter-model.test.ts
+npx playwright test tests/e2e/vehicle-visual.spec.ts
+```
+
+El archivo unitario ahora contiene **6 pruebas** y el E2E visual **3 escenarios × 2 backends = 6 ejecuciones**. No hay resultados locales aún. Después de `npm run dev`, cargar `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')`, subir/bajar y cambiar el sentido del helicóptero; su morro debe elevarse al ascender y bajar al descender, en ambos sentidos. No habilitar vehículos clasificados ni fusionar la rama sin autorización.
