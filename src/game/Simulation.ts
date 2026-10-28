@@ -1,5 +1,7 @@
 import { wrapX } from '../core/WorldWrap';
 import { CONFIG } from './config';
+import { vehicleProfile } from './VehicleProfile';
+import type { VehicleId, VehicleProfile } from './VehicleProfile';
 import { Random } from '../core/Random';
 import { Terrain } from './Terrain';
 import type { CombatContext, CombatState } from './combat/types';
@@ -34,6 +36,7 @@ export interface FlightState extends CombatState {
   seed: number; frame: number; time: number; distance: number; laps: number;
   player: Player; shots: Shot[]; shotsFired: number;
   scenario: ScenarioName; difficulty: Difficulty; missionMode: MissionMode;
+  vehicleId: VehicleId;
 }
 
 export class Simulation {
@@ -43,16 +46,19 @@ export class Simulation {
   private bombHeld = false;
   private portalHeld = false;
   readonly context: CombatContext;
+  readonly vehicle: VehicleProfile;
 
-  constructor(seed = Number(CONFIG.defaultSeed), scenario: ScenarioName = 'flight-basic', selectedDifficulty: Difficulty = 'normal', selectedMissionMode: MissionMode = 'defense', selectedSpawnMode: SpawnMode = 'classic', selectedRescueProtocol: RescueProtocol = 'realistic') {
+  constructor(seed = Number(CONFIG.defaultSeed), scenario: ScenarioName = 'flight-basic', selectedDifficulty: Difficulty = 'normal', selectedMissionMode: MissionMode = 'defense', selectedSpawnMode: SpawnMode = 'classic', selectedRescueProtocol: RescueProtocol = 'realistic', selectedVehicle: VehicleId = 'ship') {
     const selected = difficulty(selectedDifficulty);
     const selectedMode = missionMode(selectedMissionMode);
+    this.vehicle = vehicleProfile(selectedVehicle);
     const profile = difficultyProfile(selected);
     const x = scenario === 'world-seam' ? CONFIG.worldWidth - 2 : CONFIG.startX;
     this.state = {
       ...emptyCombat(scenario !== 'flight-basic' && scenario !== 'world-seam', profile),
       seed: seed >>> 0, frame: 0, time: 0, distance: 0, laps: 0, scenario,
-      difficulty: selected, missionMode: selectedMode, spawnMode: scenario === 'dynamic-basic' ? 'dynamic' : spawnMode(selectedSpawnMode),
+      difficulty: selected, missionMode: selectedMode, vehicleId: this.vehicle.id,
+      spawnMode: scenario === 'dynamic-basic' ? 'dynamic' : spawnMode(selectedSpawnMode),
       rescueProtocol: rescueProtocol(selectedRescueProtocol),
       player: { x, y: CONFIG.startY, previousX: x, previousY: CONFIG.startY, vx: 0, vy: 0, facing: 1, thrust: 0, alive: true, invulnerable: 3 },
       shots: [], shotsFired: 0,
@@ -71,6 +77,7 @@ export class Simulation {
     const s = this.state;
     const profile = difficultyProfile(s.difficulty);
     const p = s.player;
+    const flight = this.vehicle.flight;
     if (s.enabled && s.outcome !== 'active') return;
     if (s.enabled) updateLife(this.context, dt);
     if (!p.alive) input = { ...IDLE_INPUT };
@@ -80,10 +87,10 @@ export class Simulation {
     const vertical = Math.max(-1, Math.min(1, input.y));
     if (horizontal !== 0) p.facing = horizontal > 0 ? 1 : -1;
     p.thrust = Math.abs(horizontal);
-    p.vx = Math.max(-CONFIG.maxSpeed, Math.min(CONFIG.maxSpeed,
-      (p.vx + horizontal * CONFIG.acceleration * dt) * Math.exp(-CONFIG.drag * dt)));
+    p.vx = Math.max(-flight.maxSpeed, Math.min(flight.maxSpeed,
+      (p.vx + horizontal * flight.acceleration * dt) * Math.exp(-flight.drag * dt)));
     if (Math.abs(p.vx) < 0.01) p.vx = 0;
-    p.vy += (vertical * CONFIG.verticalSpeed - p.vy) * (1 - Math.exp(-CONFIG.verticalResponse * dt));
+    p.vy += (vertical * flight.verticalSpeed - p.vy) * (1 - Math.exp(-flight.verticalResponse * dt));
     const unwrapped = p.x + p.vx * dt;
     if (unwrapped < 0 || unwrapped >= CONFIG.worldWidth) s.laps++;
     p.x = wrapX(unwrapped, CONFIG.worldWidth);
@@ -97,8 +104,8 @@ export class Simulation {
     if (input.fire && p.alive && this.shotCooldown <= 1e-9) {
       this.shotCooldown = profile.playerShotInterval;
       s.shotsFired++;
-      s.shots.push({ id: this.nextId++, x: wrapX(p.x + p.facing * 5, CONFIG.worldWidth), y: p.y,
-        vx: CONFIG.shotSpeed * profile.playerShotSpeed * p.facing + p.vx, vy: 0, team: 'player', remaining: CONFIG.shotLifetime });
+      s.shots.push({ id: this.nextId++, x: wrapX(p.x + p.facing * this.vehicle.weapon.muzzleOffset, CONFIG.worldWidth), y: p.y,
+        vx: this.vehicle.weapon.projectileSpeed * profile.playerShotSpeed * p.facing + p.vx, vy: 0, team: 'player', remaining: CONFIG.shotLifetime });
     }
     if (s.enabled) {
       if (input.bomb && !this.bombHeld) useBomb(this.context, input);
