@@ -272,3 +272,24 @@ npm run dev
 ```
 
 Se esperan **11 unitarias** (5 del modelo y 6 de perfiles) y **8 E2E** (4 escenarios × dos backends); no son resultados. Iniciar vuelo para desbloquear audio y luego `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')` en la consola. Comparar visualmente `'ship'` frente a `'helicopter'`: ancho total comparable, rotores y ventanas legibles, y ruedas aproximadamente al ras del suelo. Si la nueva escala reduce demasiado detalles, ajustar **solo** `HELICOPTER_GAME_SCALE`, preservando los demás elementos aceptados. No fusionar a `main` sin permiso.
+
+
+## Fase 4 — habilitar selector y recogida propia del helicóptero (27/10/2026)
+
+El selector de vehículo está en **pantalla de inicio**, antes de elegir `INICIAR VUELO`, junto a un texto que describe las reglas de rescate. La elección se conserva entre sesiones y `start()` carga el vehículo elegido en una **partida real**, no solo en diagnóstico. El helicóptero admite dos pasajeros y requiere mantener `E` (teclado) / `Y` (mando) estando a baja altura y menos de 20 unidades/s, luego entregarlos despacio en `FORTALEZA 01` en misión Rescatista. La nave mantiene su extracción y capacidad originales. Los récords se separan por vehículo y los previos se atribuyen a nave sin perderlos.
+
+**Pruebas necesarias, aún NO ejecutadas desde GitHub (16 unitarias + 12 E2E previstas):**
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/vehicle-rescue.test.ts tests/unit/vehicle-records.test.ts tests/unit/vehicle-profiles.test.ts
+npx playwright test tests/e2e/vehicle-selection.spec.ts tests/e2e/rescue-beam.spec.ts
+npm run dev
+```
+
+Para prueba manual, elegir `Vehículo: Helicóptero de rescate` y `MISIÓN: Rescatista` en el **menú inicial** y pulsar `INICIAR VUELO`. No se requiere consola. Descender al ras del terreno, frenar, mantener E/Y junto a un colono hasta recogerlo; el HUD debe indicar `A BORDO 1/2`. Al recoger dos debe indicar cabina llena y exigir entrega en Fortaleza 01 para obtener plazas libres. Probar luego `Vehículo: Nave de rescate` con el haz clásico y comprobar que el audio e inclinaciones siguen como estaban. En récords, verificar selector `Récords: vehículo` y que los registros antiguos sigan en Nave.
+
+No se ha cambiado `main`; no fusionar/deploy ni afirmar tests aprobados antes de resultados reales. Si surge un fallo, corregirlo **en la rama**, sin alterar sonidos/animaciones/tamaños ya aprobados.
