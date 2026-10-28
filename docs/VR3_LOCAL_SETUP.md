@@ -253,3 +253,22 @@ window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')
 ```
 
 Comprobar pulsación de palas más grave y grave de turbina, volumen/silencio y pausa; al volver a `'ship'` debe regresar exactamente el motor sonoro de la nave. No usar el menú de selección de vehículos (todavía no existe) ni fusionar a `main` sin autorización. Si no suena desde una sesión nueva de consola, comprobar primero que el usuario inició vuelo mediante clic real, antes de diagnosticar un fallo del sintetizador.
+
+
+## Fase 4 — ajuste de escala tras aceptar el sonido (27/10/2026)
+
+El usuario confirmó que el sonido propio del helicóptero **funciona, es distinto y adecuado**, y pidió reducir el tamaño que era desproporcionado frente a la nave clásica. Se cambió **solo la escala de render** de `1.18` a `0.56` (constante `HELICOPTER_GAME_SCALE`). Se ajustó la única cota física asociada, `groundClearance`, de `3.8` a `2.0` para mantener las ruedas visualmente próximas al terreno. No se han cambiado geometría, rotaciones, sonido ni velocidades. No hay nueva colisión 3D ni nuevos parámetros de dificultad.
+
+**Verificación focalizada todavía pendiente:**
+
+```powershell
+cd "E:\Proyectos\JUEGOS\VoidRescue-III"
+git -c gc.auto=0 fetch origin
+git merge --ff-only origin/feat/phase4-vehicle-profiles
+npm run build
+npx vitest run tests/unit/helicopter-model.test.ts tests/unit/vehicle-profiles.test.ts
+npx playwright test tests/e2e/vehicle-visual.spec.ts
+npm run dev
+```
+
+Se esperan **11 unitarias** (5 del modelo y 6 de perfiles) y **8 E2E** (4 escenarios × dos backends); no son resultados. Iniciar vuelo para desbloquear audio y luego `window.__VOID_RESCUE__.loadScenario('flight-basic', 8042, 'helicopter')` en la consola. Comparar visualmente `'ship'` frente a `'helicopter'`: ancho total comparable, rotores y ventanas legibles, y ruedas aproximadamente al ras del suelo. Si la nueva escala reduce demasiado detalles, ajustar **solo** `HELICOPTER_GAME_SCALE`, preservando los demás elementos aceptados. No fusionar a `main` sin permiso.
