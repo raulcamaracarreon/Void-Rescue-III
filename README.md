@@ -44,6 +44,10 @@ Se agregaron **círculo, triángulo, polígonos rellenos por vértices, rellenar
 
 **Hitos siguientes de fase 3:** herramientas de selección y transformación de objetos, ajustes de dimensiones/escala sin distorsión, formatos de exportación/importación JSON validados y opciones de diseño más avanzadas. No confundir el editor básico implementado con la fase 3 completa.
 
+### Fase 4 iniciada: perfiles de vehículos (27/10/2026)
+
+En la rama aislada `feat/phase4-vehicle-profiles` comenzamos por un contrato determinista de dinámica. La nave actual sigue siendo el perfil predeterminado con todos sus parámetros heredados. Un perfil de helicóptero existe **solo como dinámica experimental en la simulación**: no hay modelo visual ni opción seleccionable para el jugador. La siguiente entrega abordará modelo/animación, selección de vehículo y comportamiento de rescate, conservando combate, oleadas y puntuación. Las pruebas nuevas están **pendientes de ejecución local**. `main` no se modifica.
+
 ### Próximos hitos del plan (corte 26/10/2026)
 
 El desarrollo ya completó el **núcleo funcional de los editores de ambientes, dos capas decorativas, Paint panorámico y selección/manipulación reversible**. El usuario **autorizó fusionar `feat/phase3-selection-tools` a `main` mediante Pull Request** tras aceptar visualmente ambas entregas y aprobar la regresión focalizada.
