@@ -9,7 +9,7 @@ import type { VehicleId } from '../game/VehicleProfile';
 import type { FlightState } from '../game/Simulation';
 import { CameraRig } from './CameraRig';
 import { createShip } from './models/Ship';
-import { animateHelicopter, createHelicopter, helicopterAttitude } from './models/Helicopter';
+import { animateHelicopter, createHelicopter } from './models/Helicopter';
 import type { HelicopterModel } from './models/Helicopter';
 import { emission } from './materials';
 import { WorldScene } from './WorldScene';
@@ -183,9 +183,10 @@ export class FlightRenderer {
       const helicopterScale = scale * 1.18;
       helicopter.group.scale.set(helicopterScale * p.facing, helicopterScale, helicopterScale);
       helicopter.group.rotation.y = 0;
-      const attitude = helicopterAttitude(p.vx, p.vy, p.facing, reducedMotion);
-      helicopter.group.rotation.x = attitude.bankX;
-      helicopter.group.rotation.z = attitude.pitchZ;
+      // Keep the ORIGINAL up/down animation on X: invert only its direction.
+      helicopter.group.rotation.x = reducedMotion ? 0 : -p.vy * 0.004;
+      // Preserve the ORIGINAL horizontal-response animation on Z unchanged.
+      helicopter.group.rotation.z = reducedMotion ? 0 : -p.vx * 0.0015;
       if (p.alive && active) animateHelicopter(helicopter, elapsed, reducedMotion);
     } else {
       // Preserve the established ship pose/exhaust calculations byte-for-byte.
