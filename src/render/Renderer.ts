@@ -178,7 +178,10 @@ export class FlightRenderer {
     const scale = title ? 2.1 : 1;
     if (helicopter) {
       helicopter.group.position.set(x, y, 0);
-      helicopter.group.scale.set(scale * p.facing, scale, scale);
+      // Bigger utility-helicopter silhouette: large enough to read from the
+      // side-view camera, with landing wheels above the ground clearance.
+      const helicopterScale = scale * 1.18;
+      helicopter.group.scale.set(helicopterScale * p.facing, helicopterScale, helicopterScale);
       helicopter.group.rotation.y = 0;
       helicopter.group.rotation.x = reducedMotion ? 0 : p.vy * 0.004;
       helicopter.group.rotation.z = reducedMotion ? 0 : -p.vx * 0.0015;
